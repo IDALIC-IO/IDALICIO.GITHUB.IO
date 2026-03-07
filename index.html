@@ -7,6 +7,7 @@
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600&display=swap');
+
 *{box-sizing:border-box}
 
 html,body{
@@ -27,6 +28,7 @@ overflow:hidden;
 position:relative
 }
 
+/* fundo suave */
 body::before{
 content:"";
 position:absolute;
@@ -34,18 +36,6 @@ inset:0;
 background:
 radial-gradient(circle at top,rgba(255,255,255,.08),transparent 38%),
 radial-gradient(circle at bottom,rgba(255,255,255,.04),transparent 32%);
-pointer-events:none
-}
-
-body::after{
-content:"";
-position:absolute;
-inset:0;
-opacity:.05;
-background-image:
-linear-gradient(to right,rgba(255,255,255,.15) 1px,transparent 1px),
-linear-gradient(to bottom,rgba(255,255,255,.15) 1px,transparent 1px);
-background-size:72px 72px;
 pointer-events:none
 }
 
@@ -65,6 +55,7 @@ align-items:center;
 justify-content:center
 }
 
+/* badge em breve */
 .badge{
 display:inline-flex;
 align-items:center;
@@ -87,28 +78,59 @@ width:10px;
 height:10px;
 border-radius:999px;
 background:#ef4444;
-box-shadow:0 0 12px rgba(239,68,68,.9);
+box-shadow:0 0 14px rgba(239,68,68,.9);
 animation:dotPulse 1.6s ease-in-out infinite
 }
 
+/* container titulo */
 .title-box{
 position:relative;
 display:inline-block;
-padding:12px 0
+padding:60px 0
+}
+
+/* luz volumétrica vindo de baixo */
+.uplight{
+position:absolute;
+left:50%;
+bottom:-80px;
+width:160%;
+height:260px;
+transform:translateX(-50%);
+background:radial-gradient(ellipse at bottom,rgba(255,255,255,.55),rgba(255,255,255,.18) 40%,transparent 70%);
+filter:blur(45px);
+opacity:.7;
+animation:uplightPulse 5s ease-in-out infinite
+}
+
+/* feixe de luz vertical */
+.light-beam{
+position:absolute;
+left:50%;
+bottom:-200px;
+width:280px;
+height:420px;
+transform:translateX(-50%);
+background:linear-gradient(to top,rgba(255,255,255,.18),transparent);
+filter:blur(60px);
+opacity:.5
 }
 
 .title{
 position:relative;
-z-index:2;
+z-index:3;
 margin:0;
 font-size:clamp(3rem,10vw,7.5rem);
 font-weight:600;
 letter-spacing:.28em;
-font-family:"Orbitron", "Eurostile", "Rajdhani", sans-serif;
-text-shadow:0 0 24px rgba(255,255,255,.08);
+font-family:"Orbitron",sans-serif;
+text-shadow:
+0 0 25px rgba(255,255,255,.25),
+0 0 50px rgba(255,255,255,.15);
 animation:titleReveal 1.15s cubic-bezier(.22,1,.36,1) both
 }
 
+/* linha central */
 .line{
 position:absolute;
 left:-160px;
@@ -116,7 +138,7 @@ right:-160px;
 top:50%;
 height:1px;
 transform:translateY(-50%);
-background:linear-gradient(to right,transparent,rgba(255,255,255,.45),transparent);
+background:linear-gradient(to right,transparent,rgba(255,255,255,.5),transparent);
 opacity:.9
 }
 
@@ -129,10 +151,10 @@ height:2px;
 transform:translateY(-50%);
 background:rgba(255,255,255,.18);
 filter:blur(10px);
-opacity:.6
+opacity:.7
 }
 
-/* LASER */
+/* laser */
 .laser{
 position:absolute;
 top:50%;
@@ -143,9 +165,9 @@ transform:translateY(-50%);
 background:linear-gradient(to right,transparent,rgba(255,255,255,1),transparent);
 filter:blur(1.4px);
 box-shadow:
-0 0 14px rgba(255,255,255,.95),
-0 0 28px rgba(255,255,255,.65),
-0 0 48px rgba(255,255,255,.35);
+0 0 16px rgba(255,255,255,.95),
+0 0 32px rgba(255,255,255,.65),
+0 0 64px rgba(255,255,255,.35);
 animation:laserRun 2.4s linear infinite
 }
 
@@ -156,19 +178,7 @@ background:rgba(255,255,255,.95);
 border-radius:999px
 }
 
-.ambient{
-position:absolute;
-left:50%;
-top:50%;
-width:28rem;
-height:28rem;
-transform:translate(-50%,-50%);
-border-radius:50%;
-background:rgba(255,255,255,.035);
-filter:blur(60px);
-animation:ambientPulse 6s ease-in-out infinite
-}
-
+/* animações */
 @keyframes badgeFloat{
 0%,100%{transform:translateY(0)}
 50%{transform:translateY(-2px)}
@@ -184,32 +194,17 @@ from{opacity:0;transform:scale(.98);filter:blur(8px)}
 to{opacity:1;transform:scale(1);filter:blur(0)}
 }
 
-/* CORREÇÃO DO LASER: esquerda → direita total */
 @keyframes laserRun{
-0%{
-left:-260px;
-transform:translateY(-50%)
-}
-100%{
-left:calc(100% + 20px);
-transform:translateY(-50%)
-}
+0%{left:-260px}
+100%{left:calc(100% + 20px)}
 }
 
-@keyframes ambientPulse{
-0%,100%{opacity:.2;transform:translate(-50%,-50%) scale(1)}
-50%{opacity:.32;transform:translate(-50%,-50%) scale(1.08)}
+@keyframes uplightPulse{
+0%,100%{opacity:.6}
+50%{opacity:.9}
 }
 
 @media (max-width:768px){
-.badge{
-font-size:12px;
-letter-spacing:.28em;
-padding:10px 18px;
-gap:10px;
-margin-bottom:28px
-}
-
 .line{left:-60px;right:-60px}
 .line-glow{left:-30px;right:-30px}
 
@@ -223,8 +218,6 @@ left:-180px
 
 <body>
 
-<div class="ambient"></div>
-
 <main class="wrap">
 <div class="stack">
 
@@ -234,6 +227,10 @@ left:-180px
 </div>
 
 <div class="title-box">
+
+<div class="uplight"></div>
+<div class="light-beam"></div>
+
 <div class="line"></div>
 <div class="line-glow"></div>
 
@@ -242,6 +239,7 @@ left:-180px
 </div>
 
 <h1 class="title">IDALIC.IO</h1>
+
 </div>
 
 </div>
