@@ -14,7 +14,7 @@ html, body {
   margin: 0;
   width: 100%;
   min-height: 100%;
-  background: #050505;
+  background: #040404;
   color: #fff;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
@@ -26,60 +26,113 @@ body {
   justify-content: center;
   overflow: hidden;
   position: relative;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255,255,255,0.05), transparent 28%),
+    radial-gradient(circle at 50% 100%, rgba(255,255,255,0.05), transparent 30%),
+    linear-gradient(to bottom, #050505 0%, #030303 100%);
 }
 
-body::before {
+body::before,
+body::after {
   content: "";
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(circle at 50% 18%, rgba(255,255,255,0.08), transparent 30%),
-    radial-gradient(circle at 50% 100%, rgba(255,255,255,0.06), transparent 32%),
-    linear-gradient(to bottom, rgba(255,255,255,0.02), transparent 30%);
   pointer-events: none;
 }
 
-/* fundo estrelas */
-/* campo de estrelas multi‑camadas */
-body::after{
-content:"";
-position:absolute;
-inset:0;
-background-image:
-radial-gradient(2px 2px at 10% 20%, rgba(255,255,255,0.9), transparent),
-radial-gradient(1px 1px at 30% 70%, rgba(255,255,255,0.8), transparent),
-radial-gradient(1.5px 1.5px at 80% 40%, rgba(255,255,255,0.9), transparent),
-radial-gradient(1px 1px at 60% 10%, rgba(255,255,255,0.7), transparent),
-radial-gradient(2px 2px at 90% 80%, rgba(255,255,255,0.9), transparent),
-radial-gradient(1px 1px at 50% 50%, rgba(255,255,255,0.8), transparent),
-radial-gradient(1px 1px at 15% 85%, rgba(255,255,255,0.7), transparent),
-radial-gradient(1.5px 1.5px at 75% 15%, rgba(255,255,255,0.9), transparent);
-background-size:800px 800px;
-background-repeat:repeat;
-animation:starsDrift 160s linear infinite;
-opacity:0.45;
-pointer-events:none
+body::before {
+  background-image:
+    radial-gradient(1px 1px at 8% 22%, rgba(255,255,255,0.85), transparent),
+    radial-gradient(1.5px 1.5px at 16% 68%, rgba(255,255,255,0.55), transparent),
+    radial-gradient(1px 1px at 25% 42%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 34% 80%, rgba(255,255,255,0.45), transparent),
+    radial-gradient(1.5px 1.5px at 48% 18%, rgba(255,255,255,0.65), transparent),
+    radial-gradient(1px 1px at 58% 62%, rgba(255,255,255,0.75), transparent),
+    radial-gradient(1.5px 1.5px at 70% 28%, rgba(255,255,255,0.55), transparent),
+    radial-gradient(1px 1px at 78% 76%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 88% 38%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1.5px 1.5px at 94% 14%, rgba(255,255,255,0.5), transparent);
+  background-size: 700px 700px;
+  opacity: 0.5;
+  animation: starsDriftFar 210s linear infinite;
 }
 
-/* camada extra para profundidade */
-body::before{
-content:"";
-position:absolute;
-inset:0;
-background-image:
-radial-gradient(1px 1px at 20% 40%, rgba(255,255,255,0.7), transparent),
-radial-gradient(1px 1px at 70% 60%, rgba(255,255,255,0.6), transparent),
-radial-gradient(1px 1px at 40% 80%, rgba(255,255,255,0.7), transparent),
-radial-gradient(1px 1px at 85% 25%, rgba(255,255,255,0.8), transparent);
-background-size:600px 600px;
-animation:starsDriftSlow 220s linear infinite;
-opacity:0.35;
-pointer-events:none
+body::after {
+  background-image:
+    radial-gradient(2px 2px at 10% 20%, rgba(255,255,255,0.95), transparent),
+    radial-gradient(1px 1px at 18% 54%, rgba(255,255,255,0.75), transparent),
+    radial-gradient(2px 2px at 28% 78%, rgba(255,255,255,0.85), transparent),
+    radial-gradient(1.5px 1.5px at 42% 30%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 54% 14%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(2px 2px at 64% 60%, rgba(255,255,255,0.92), transparent),
+    radial-gradient(1.5px 1.5px at 74% 42%, rgba(255,255,255,0.72), transparent),
+    radial-gradient(1px 1px at 84% 82%, rgba(255,255,255,0.62), transparent),
+    radial-gradient(2px 2px at 92% 24%, rgba(255,255,255,0.88), transparent),
+    radial-gradient(1px 1px at 97% 68%, rgba(255,255,255,0.68), transparent);
+  background-size: 900px 900px;
+  opacity: 0.6;
+  animation: starsDriftNear 150s linear infinite;
+}
+
+.star-layer,
+.star-layer::before,
+.star-layer::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.star-layer {
+  opacity: 0.45;
+}
+
+.star-layer::before,
+.star-layer::after {
+  content: "";
+  background-repeat: repeat;
+}
+
+.star-layer::before {
+  background-image:
+    radial-gradient(1px 1px at 12% 32%, rgba(255,255,255,0.85), transparent),
+    radial-gradient(1px 1px at 36% 58%, rgba(255,255,255,0.65), transparent),
+    radial-gradient(1px 1px at 58% 22%, rgba(255,255,255,0.82), transparent),
+    radial-gradient(1px 1px at 82% 48%, rgba(255,255,255,0.72), transparent);
+  background-size: 520px 520px;
+  animation: twinkle 5.5s ease-in-out infinite alternate;
+}
+
+.star-layer::after {
+  background-image:
+    radial-gradient(1.5px 1.5px at 24% 72%, rgba(255,255,255,0.95), transparent),
+    radial-gradient(1px 1px at 48% 38%, rgba(255,255,255,0.65), transparent),
+    radial-gradient(1.5px 1.5px at 76% 18%, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1px 1px at 90% 74%, rgba(255,255,255,0.72), transparent);
+  background-size: 680px 680px;
+  animation: twinkle 7.2s ease-in-out infinite reverse;
+}
+
+.nebula {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 980px;
+  height: 680px;
+  transform: translate(-50%, -50%);
+  background:
+    radial-gradient(circle at 36% 48%, rgba(112, 132, 255, 0.16), transparent 42%),
+    radial-gradient(circle at 60% 62%, rgba(255, 102, 191, 0.12), transparent 46%),
+    radial-gradient(circle at 52% 34%, rgba(102, 255, 214, 0.1), transparent 44%),
+    radial-gradient(circle at 68% 40%, rgba(135, 96, 255, 0.09), transparent 40%);
+  filter: blur(100px);
+  opacity: 0.72;
+  pointer-events: none;
+  animation: nebulaMove 32s ease-in-out infinite alternate;
 }
 
 .wrap {
   position: relative;
-  z-index: 2;
+  z-index: 5;
   width: 100%;
   max-width: 1280px;
   padding: 32px 24px;
@@ -101,7 +154,7 @@ pointer-events:none
   padding: 12px 24px;
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 999px;
-  background: rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.045);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   font-size: 14px;
@@ -117,9 +170,7 @@ pointer-events:none
   height: 10px;
   border-radius: 999px;
   background: #ef4444;
-  box-shadow:
-    0 0 10px rgba(239,68,68,0.95),
-    0 0 20px rgba(239,68,68,0.55);
+  box-shadow: 0 0 10px rgba(239,68,68,0.95), 0 0 22px rgba(239,68,68,0.58);
   animation: dotPulse 1.6s ease-in-out infinite;
 }
 
@@ -133,12 +184,12 @@ pointer-events:none
   position: absolute;
   left: 50%;
   top: 44%;
-  width: 760px;
-  height: 760px;
+  width: 780px;
+  height: 780px;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,255,255,0.07), rgba(255,255,255,0.02) 42%, transparent 68%);
-  filter: blur(70px);
+  background: radial-gradient(circle, rgba(255,255,255,0.075), rgba(255,255,255,0.02) 42%, transparent 68%);
+  filter: blur(78px);
   opacity: 0.7;
   animation: haloPulse 6s ease-in-out infinite;
   pointer-events: none;
@@ -217,10 +268,7 @@ pointer-events:none
   transform: translateY(-50%);
   background: linear-gradient(to right, transparent, rgba(255,255,255,1), transparent);
   filter: blur(1.2px);
-  box-shadow:
-    0 0 16px rgba(255,255,255,0.95),
-    0 0 36px rgba(255,255,255,0.72),
-    0 0 72px rgba(255,255,255,0.38);
+  box-shadow: 0 0 16px rgba(255,255,255,0.95), 0 0 36px rgba(255,255,255,0.72), 0 0 72px rgba(255,255,255,0.38);
   animation: laserRun 2.5s linear infinite;
   pointer-events: none;
 }
@@ -230,6 +278,18 @@ pointer-events:none
   inset: 1px 18px;
   background: rgba(255,255,255,0.98);
   border-radius: 999px;
+}
+
+.reveal-flash {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.04) 44%, rgba(255,255,255,0.38) 50%, rgba(255,255,255,0.04) 56%, transparent 100%);
+  filter: blur(14px);
+  opacity: 0;
+  mix-blend-mode: screen;
+  animation: revealPass 2.5s linear infinite;
+  pointer-events: none;
+  z-index: 4;
 }
 
 .title-glow {
@@ -272,18 +332,15 @@ pointer-events:none
 
 .title {
   position: relative;
-  z-index: 4;
+  z-index: 6;
   margin: 0;
   font-size: clamp(3rem, 10vw, 7.5rem);
   font-weight: 700;
   letter-spacing: 0.28em;
   font-family: "Orbitron", sans-serif;
   color: #fff;
-  text-shadow:
-    0 0 18px rgba(255,255,255,0.22),
-    0 0 44px rgba(255,255,255,0.14),
-    0 12px 50px rgba(255,255,255,0.06);
-  animation: titleReveal 1.15s cubic-bezier(0.22, 1, 0.36, 1) both;
+  text-shadow: 0 0 18px rgba(255,255,255,0.22), 0 0 44px rgba(255,255,255,0.14), 0 12px 50px rgba(255,255,255,0.06);
+  animation: titleReveal 1.15s cubic-bezier(0.22, 1, 0.36, 1) both, titleBrighten 2.5s linear infinite;
 }
 
 .particles,
@@ -327,17 +384,69 @@ pointer-events:none
   animation-duration: 8.2s;
 }
 
-@keyframes starsDrift{
-0%{background-position:0 0}
-100%{background-position:2000px 2000px}
+.shooting-star,
+.shooting-star-2,
+.shooting-star-3 {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 8px rgba(255,255,255,1), 0 0 20px rgba(255,255,255,0.7);
+  pointer-events: none;
+  opacity: 0;
 }
 
-@keyframes starsDriftSlow{
-0%{background-position:0 0}
-100%{background-position:-1500px 1500px}
-}{
-0%{background-position:0 0}
-100%{background-position:1000px 1000px}
+.shooting-star::after,
+.shooting-star-2::after,
+.shooting-star-3::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: -140px;
+  width: 140px;
+  height: 2px;
+  transform: translateY(-50%);
+  background: linear-gradient(to right, rgba(255,255,255,0.9), transparent);
+  filter: blur(1px);
+}
+
+.shooting-star {
+  top: 12%;
+  left: 8%;
+  animation: shootA 14s linear infinite;
+}
+
+.shooting-star-2 {
+  top: 24%;
+  left: 62%;
+  animation: shootB 18s linear infinite;
+}
+
+.shooting-star-3 {
+  top: 8%;
+  left: 34%;
+  animation: shootC 22s linear infinite;
+}
+
+@keyframes starsDriftFar {
+  0% { background-position: 0 0; }
+  100% { background-position: 1600px 1600px; }
+}
+
+@keyframes starsDriftNear {
+  0% { background-position: 0 0; }
+  100% { background-position: -2000px 1800px; }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.85; }
+}
+
+@keyframes nebulaMove {
+  0% { transform: translate(-50%, -50%) scale(1); }
+  100% { transform: translate(-50%, -48%) scale(1.05); }
 }
 
 @keyframes badgeFloat {
@@ -360,6 +469,23 @@ pointer-events:none
   100% { left: calc(100% + 40px); }
 }
 
+@keyframes revealPass {
+  0% { transform: translateX(-120%); opacity: 0; }
+  10% { opacity: 0.12; }
+  48% { opacity: 0.42; }
+  56% { opacity: 0.18; }
+  100% { transform: translateX(120%); opacity: 0; }
+}
+
+@keyframes titleBrighten {
+  0%, 38%, 100% {
+    text-shadow: 0 0 18px rgba(255,255,255,0.22), 0 0 44px rgba(255,255,255,0.14), 0 12px 50px rgba(255,255,255,0.06);
+  }
+  46%, 54% {
+    text-shadow: 0 0 24px rgba(255,255,255,0.35), 0 0 64px rgba(255,255,255,0.28), 0 16px 70px rgba(255,255,255,0.1);
+  }
+}
+
 @keyframes uplightPulse {
   0%, 100% { opacity: 0.62; }
   50% { opacity: 0.95; }
@@ -375,15 +501,30 @@ pointer-events:none
   50% { opacity: 0.5; }
 }
 
-/* estrelas piscando */
-@keyframes twinkle{
-0%,100%{opacity:.35}
-50%{opacity:.9}
-}
-
 @keyframes particlesDrift {
   0%, 100% { transform: translate(-50%, -50%) translateY(0); opacity: 0.25; }
   50% { transform: translate(-50%, -50%) translateY(-10px); opacity: 0.52; }
+}
+
+@keyframes shootA {
+  0%, 12% { transform: translate(0, 0) rotate(18deg); opacity: 0; }
+  14% { opacity: 1; }
+  26% { transform: translate(680px, 240px) rotate(18deg); opacity: 0; }
+  100% { transform: translate(680px, 240px) rotate(18deg); opacity: 0; }
+}
+
+@keyframes shootB {
+  0%, 38% { transform: translate(0, 0) rotate(24deg); opacity: 0; }
+  40% { opacity: 1; }
+  50% { transform: translate(540px, 200px) rotate(24deg); opacity: 0; }
+  100% { transform: translate(540px, 200px) rotate(24deg); opacity: 0; }
+}
+
+@keyframes shootC {
+  0%, 62% { transform: translate(0, 0) rotate(20deg); opacity: 0; }
+  64% { opacity: 1; }
+  74% { transform: translate(620px, 220px) rotate(20deg); opacity: 0; }
+  100% { transform: translate(620px, 220px) rotate(20deg); opacity: 0; }
 }
 
 @media (max-width: 768px) {
@@ -397,6 +538,16 @@ pointer-events:none
 
   .title-box {
     padding: 60px 0 90px;
+  }
+
+  .ambient-halo {
+    width: 480px;
+    height: 480px;
+  }
+
+  .nebula {
+    width: 620px;
+    height: 440px;
   }
 
   .line {
@@ -433,64 +584,23 @@ pointer-events:none
     width: 240px;
     height: 360px;
   }
-}
 
-/* nebulosa espacial */
-.nebula{
-position:absolute;
-left:50%;
-top:45%;
-width:900px;
-height:600px;
-transform:translate(-50%,-50%);
-background:radial-gradient(circle at 40% 50%, rgba(120,140,255,0.15), transparent 60%),
-radial-gradient(circle at 60% 60%, rgba(255,120,200,0.12), transparent 65%),
-radial-gradient(circle at 50% 40%, rgba(120,255,220,0.10), transparent 70%);
-filter:blur(90px);
-opactiy:.6;
-pointer-events:none;
-animation:nebulaMove 40s ease-in-out infinite alternate;
+  .shooting-star::after,
+  .shooting-star-2::after,
+  .shooting-star-3::after {
+    width: 90px;
+    left: -90px;
+  }
 }
-
-/* estrela cadente */
-.shooting-star{
-position:absolute;
-width:2px;
-height:2px;
-background:white;
-box-shadow:0 0 6px white,0 0 12px white;
-top:-10px;
-left:-10px;
-animation:shoot 12s linear infinite;
-}
-
-.shooting-star::after{
-content:"";
-position:absolute;
-width:120px;
-height:2px;
-background:linear-gradient(to right, white, transparent);
-transform:translateX(-120px);
-opacity:.7;
-}
-
-@keyframes nebulaMove{
-0%{transform:translate(-50%,-50%) scale(1)}
-100%{transform:translate(-50%,-48%) scale(1.05)}
-}
-
-@keyframes shoot{
-0%{transform:translate(0,0);opacity:0}
-5%{opacity:1}
-25%{transform:translate(1200px,400px);opacity:0}
-100%{opacity:0}
-}
-
 </style>
 </head>
 <body>
+<div class="star-layer"></div>
 <div class="nebula"></div>
 <div class="shooting-star"></div>
+<div class="shooting-star-2"></div>
+<div class="shooting-star-3"></div>
+
 <main class="wrap">
   <div class="stack">
     <div class="badge">
@@ -507,10 +617,8 @@ opacity:.7;
       <div class="line"></div>
       <div class="line-glow"></div>
       <div class="scan-wave"></div>
-
-      <div class="laser">
-        <div class="laser-core"></div>
-      </div>
+      <div class="laser"><div class="laser-core"></div></div>
+      <div class="reveal-flash"></div>
 
       <div class="title-glow"></div>
       <h1 class="title">IDALIC.IO</h1>
