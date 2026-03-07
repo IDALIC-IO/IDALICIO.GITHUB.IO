@@ -6,244 +6,419 @@
 <title>IDALIC.IO — Em breve</title>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700&display=swap');
 
-*{box-sizing:border-box}
+* { box-sizing: border-box; }
 
-html,body{
-margin:0;
-width:100%;
-min-height:100%;
-background:#0a0a0a;
-color:#fff;
-font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif
+html, body {
+  margin: 0;
+  width: 100%;
+  min-height: 100%;
+  background: #050505;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-body{
-min-height:100vh;
-display:flex;
-align-items:center;
-justify-content:center;
-overflow:hidden;
-position:relative
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
 }
 
-/* fundo suave */
-body::before{
-content:"";
-position:absolute;
-inset:0;
-background:
-radial-gradient(circle at top,rgba(255,255,255,.08),transparent 38%),
-radial-gradient(circle at bottom,rgba(255,255,255,.04),transparent 32%);
-pointer-events:none
+body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255,255,255,0.08), transparent 30%),
+    radial-gradient(circle at 50% 100%, rgba(255,255,255,0.06), transparent 32%),
+    linear-gradient(to bottom, rgba(255,255,255,0.02), transparent 30%);
+  pointer-events: none;
 }
 
-.wrap{
-position:relative;
-z-index:1;
-width:100%;
-max-width:1200px;
-padding:32px 24px;
-text-align:center
+body::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.06;
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask-image: linear-gradient(to bottom, transparent, rgba(0,0,0,1) 18%, rgba(0,0,0,1) 82%, transparent);
+  pointer-events: none;
 }
 
-.stack{
-display:flex;
-flex-direction:column;
-align-items:center;
-justify-content:center
+.wrap {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 1280px;
+  padding: 32px 24px;
+  text-align: center;
 }
 
-/* badge em breve */
-.badge{
-display:inline-flex;
-align-items:center;
-gap:12px;
-margin-bottom:18px;
-padding:12px 24px;
-border:1px solid rgba(255,255,255,.1);
-border-radius:999px;
-background:rgba(255,255,255,.04);
-backdrop-filter:blur(12px);
-font-size:14px;
-letter-spacing:.35em;
-text-transform:uppercase;
-color:#d4d4d8;
-animation:badgeFloat 4s ease-in-out infinite
+.stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
-.dot{
-width:10px;
-height:10px;
-border-radius:999px;
-background:#ef4444;
-box-shadow:0 0 14px rgba(239,68,68,.9);
-animation:dotPulse 1.6s ease-in-out infinite
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+  padding: 12px 24px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  font-size: 14px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: #d4d4d8;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02), 0 0 30px rgba(255,255,255,0.03);
+  animation: badgeFloat 4s ease-in-out infinite;
 }
 
-/* container titulo */
-.title-box{
-position:relative;
-display:inline-block;
-padding:60px 0
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #ef4444;
+  box-shadow:
+    0 0 10px rgba(239,68,68,0.95),
+    0 0 20px rgba(239,68,68,0.55);
+  animation: dotPulse 1.6s ease-in-out infinite;
 }
 
-/* luz volumétrica vindo de baixo */
-.uplight{
-position:absolute;
-left:50%;
-bottom:-80px;
-width:160%;
-height:260px;
-transform:translateX(-50%);
-background:radial-gradient(ellipse at bottom,rgba(255,255,255,.55),rgba(255,255,255,.18) 40%,transparent 70%);
-filter:blur(45px);
-opacity:.7;
-animation:uplightPulse 5s ease-in-out infinite
+.title-box {
+  position: relative;
+  display: inline-block;
+  padding: 84px 0 120px;
 }
 
-/* feixe de luz vertical */
-.light-beam{
-position:absolute;
-left:50%;
-bottom:-200px;
-width:280px;
-height:420px;
-transform:translateX(-50%);
-background:linear-gradient(to top,rgba(255,255,255,.18),transparent);
-filter:blur(60px);
-opacity:.5
+.ambient-halo {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: 760px;
+  height: 760px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.07), rgba(255,255,255,0.02) 42%, transparent 68%);
+  filter: blur(70px);
+  opacity: 0.7;
+  animation: haloPulse 6s ease-in-out infinite;
+  pointer-events: none;
 }
 
-.title{
-position:relative;
-z-index:3;
-margin:0;
-font-size:clamp(3rem,10vw,7.5rem);
-font-weight:600;
-letter-spacing:.28em;
-font-family:"Orbitron",sans-serif;
-text-shadow:
-0 0 25px rgba(255,255,255,.25),
-0 0 50px rgba(255,255,255,.15);
-animation:titleReveal 1.15s cubic-bezier(.22,1,.36,1) both
+.uplight {
+  position: absolute;
+  left: 50%;
+  bottom: -82px;
+  width: 170%;
+  height: 280px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at bottom, rgba(255,255,255,0.55), rgba(255,255,255,0.18) 38%, transparent 72%);
+  filter: blur(50px);
+  opacity: 0.82;
+  animation: uplightPulse 5.5s ease-in-out infinite;
+  pointer-events: none;
 }
 
-/* linha central */
-.line{
-position:absolute;
-left:-160px;
-right:-160px;
-top:50%;
-height:1px;
-transform:translateY(-50%);
-background:linear-gradient(to right,transparent,rgba(255,255,255,.5),transparent);
-opacity:.9
+.light-beam {
+  position: absolute;
+  left: 50%;
+  bottom: -260px;
+  width: 320px;
+  height: 520px;
+  transform: translateX(-50%);
+  background: linear-gradient(to top, rgba(255,255,255,0.2), rgba(255,255,255,0.05) 45%, transparent 80%);
+  filter: blur(70px);
+  opacity: 0.58;
+  pointer-events: none;
 }
 
-.line-glow{
-position:absolute;
-left:-80px;
-right:-80px;
-top:50%;
-height:2px;
-transform:translateY(-50%);
-background:rgba(255,255,255,.18);
-filter:blur(10px);
-opacity:.7
+.line {
+  position: absolute;
+  left: -240px;
+  right: -240px;
+  top: 50%;
+  height: 1px;
+  transform: translateY(-50%);
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.52), transparent);
+  opacity: 0.95;
 }
 
-/* laser */
-.laser{
-position:absolute;
-top:50%;
-left:-260px;
-width:240px;
-height:4px;
-transform:translateY(-50%);
-background:linear-gradient(to right,transparent,rgba(255,255,255,1),transparent);
-filter:blur(1.4px);
-box-shadow:
-0 0 16px rgba(255,255,255,.95),
-0 0 32px rgba(255,255,255,.65),
-0 0 64px rgba(255,255,255,.35);
-animation:laserRun 2.4s linear infinite
+.line-glow {
+  position: absolute;
+  left: -160px;
+  right: -160px;
+  top: 50%;
+  height: 3px;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,0.2);
+  filter: blur(14px);
+  opacity: 0.72;
 }
 
-.laser-core{
-position:absolute;
-inset:1px 18px;
-background:rgba(255,255,255,.95);
-border-radius:999px
+.scan-wave {
+  position: absolute;
+  top: 50%;
+  left: -340px;
+  width: 320px;
+  height: 16px;
+  transform: translateY(-50%);
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.16), rgba(255,255,255,0.85), rgba(255,255,255,0.16), transparent);
+  filter: blur(8px);
+  opacity: 0.95;
+  animation: laserRun 2.5s linear infinite;
+  pointer-events: none;
 }
 
-/* animações */
-@keyframes badgeFloat{
-0%,100%{transform:translateY(0)}
-50%{transform:translateY(-2px)}
+.laser {
+  position: absolute;
+  top: 50%;
+  left: -280px;
+  width: 260px;
+  height: 4px;
+  transform: translateY(-50%);
+  background: linear-gradient(to right, transparent, rgba(255,255,255,1), transparent);
+  filter: blur(1.2px);
+  box-shadow:
+    0 0 16px rgba(255,255,255,0.95),
+    0 0 36px rgba(255,255,255,0.72),
+    0 0 72px rgba(255,255,255,0.38);
+  animation: laserRun 2.5s linear infinite;
+  pointer-events: none;
 }
 
-@keyframes dotPulse{
-0%,100%{opacity:.45;transform:scale(1)}
-50%{opacity:1;transform:scale(1.4)}
+.laser-core {
+  position: absolute;
+  inset: 1px 18px;
+  background: rgba(255,255,255,0.98);
+  border-radius: 999px;
 }
 
-@keyframes titleReveal{
-from{opacity:0;transform:scale(.98);filter:blur(8px)}
-to{opacity:1;transform:scale(1);filter:blur(0)}
+.title-glow {
+  position: absolute;
+  inset: 0;
+  filter: blur(24px);
+  opacity: 0.4;
+  animation: titleGlowPulse 4.5s ease-in-out infinite;
+  pointer-events: none;
 }
 
-@keyframes laserRun{
-0%{left:-260px}
-100%{left:calc(100% + 20px)}
+.title-glow::before {
+  content: "IDALIC.IO";
+  position: absolute;
+  inset: 0;
+  font-family: "Orbitron", sans-serif;
+  font-weight: 700;
+  font-size: clamp(3rem, 10vw, 7.5rem);
+  letter-spacing: 0.28em;
+  color: rgba(255,255,255,0.3);
 }
 
-@keyframes uplightPulse{
-0%,100%{opacity:.6}
-50%{opacity:.9}
+.title-reflection {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 8px);
+  transform: translateX(-50%) scaleY(-1);
+  transform-origin: top center;
+  font-family: "Orbitron", sans-serif;
+  font-size: clamp(2.4rem, 8vw, 6.1rem);
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  color: rgba(255,255,255,0.12);
+  white-space: nowrap;
+  filter: blur(1px);
+  opacity: 0.38;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.4), transparent 70%);
+  pointer-events: none;
 }
 
-@media (max-width:768px){
-.line{left:-60px;right:-60px}
-.line-glow{left:-30px;right:-30px}
-
-.laser{
-width:160px;
-left:-180px
+.title {
+  position: relative;
+  z-index: 4;
+  margin: 0;
+  font-size: clamp(3rem, 10vw, 7.5rem);
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  font-family: "Orbitron", sans-serif;
+  color: #fff;
+  text-shadow:
+    0 0 18px rgba(255,255,255,0.22),
+    0 0 44px rgba(255,255,255,0.14),
+    0 12px 50px rgba(255,255,255,0.06);
+  animation: titleReveal 1.15s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+
+.particles,
+.particles::before,
+.particles::after {
+  position: absolute;
+  content: "";
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.75);
+  box-shadow:
+    -240px -10px 0 rgba(255,255,255,0.16),
+    -180px 16px 0 rgba(255,255,255,0.12),
+    -120px -18px 0 rgba(255,255,255,0.18),
+    -60px 10px 0 rgba(255,255,255,0.12),
+    40px -14px 0 rgba(255,255,255,0.14),
+    120px 12px 0 rgba(255,255,255,0.18),
+    200px -8px 0 rgba(255,255,255,0.12),
+    260px 10px 0 rgba(255,255,255,0.16);
+  transform: translate(-50%, -50%);
+  filter: blur(1px);
+  opacity: 0.45;
+  animation: particlesDrift 7s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.particles::before {
+  width: 4px;
+  height: 4px;
+  opacity: 0.55;
+  animation-duration: 5.8s;
+}
+
+.particles::after {
+  width: 3px;
+  height: 3px;
+  opacity: 0.4;
+  animation-duration: 8.2s;
+}
+
+@keyframes badgeFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+@keyframes dotPulse {
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.35); }
+}
+
+@keyframes titleReveal {
+  from { opacity: 0; transform: scale(0.98); filter: blur(8px); }
+  to { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+@keyframes laserRun {
+  0% { left: -340px; }
+  100% { left: calc(100% + 40px); }
+}
+
+@keyframes uplightPulse {
+  0%, 100% { opacity: 0.62; }
+  50% { opacity: 0.95; }
+}
+
+@keyframes haloPulse {
+  0%, 100% { opacity: 0.48; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.78; transform: translate(-50%, -50%) scale(1.04); }
+}
+
+@keyframes titleGlowPulse {
+  0%, 100% { opacity: 0.22; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes particlesDrift {
+  0%, 100% { transform: translate(-50%, -50%) translateY(0); opacity: 0.25; }
+  50% { transform: translate(-50%, -50%) translateY(-10px); opacity: 0.52; }
+}
+
+@media (max-width: 768px) {
+  .badge {
+    font-size: 12px;
+    letter-spacing: 0.28em;
+    padding: 10px 18px;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .title-box {
+    padding: 60px 0 90px;
+  }
+
+  .line {
+    left: -80px;
+    right: -80px;
+  }
+
+  .line-glow {
+    left: -40px;
+    right: -40px;
+  }
+
+  .laser {
+    width: 170px;
+    left: -190px;
+  }
+
+  .scan-wave {
+    width: 190px;
+    left: -220px;
+  }
+
+  .title-reflection {
+    top: calc(100% + 4px);
+    font-size: clamp(2rem, 7vw, 4rem);
+  }
+
+  .uplight {
+    width: 190%;
+    height: 220px;
+  }
+
+  .light-beam {
+    width: 240px;
+    height: 360px;
+  }
 }
 </style>
 </head>
-
 <body>
-
 <main class="wrap">
-<div class="stack">
+  <div class="stack">
+    <div class="badge">
+      <span class="dot"></span>
+      <span>Em breve</span>
+    </div>
 
-<div class="badge">
-<span class="dot"></span>
-<span>Em breve</span>
-</div>
+    <div class="title-box">
+      <div class="ambient-halo"></div>
+      <div class="uplight"></div>
+      <div class="light-beam"></div>
+      <div class="particles"></div>
 
-<div class="title-box">
+      <div class="line"></div>
+      <div class="line-glow"></div>
+      <div class="scan-wave"></div>
 
-<div class="uplight"></div>
-<div class="light-beam"></div>
+      <div class="laser">
+        <div class="laser-core"></div>
+      </div>
 
-<div class="line"></div>
-<div class="line-glow"></div>
-
-<div class="laser">
-<div class="laser-core"></div>
-</div>
-
-<h1 class="title">IDALIC.IO</h1>
-
-</div>
-
-</div>
+      <div class="title-glow"></div>
+      <h1 class="title">IDALIC.IO</h1>
+      <div class="title-reflection">IDALIC.IO</div>
+    </div>
+  </div>
 </main>
-
 </body>
 </html>
