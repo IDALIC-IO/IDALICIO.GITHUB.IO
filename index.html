@@ -158,14 +158,30 @@ main {
   animation: fade 1.2s 3.2s ease forwards;
 }
 
+/* Stacked speed stripes beside the status, slanted like a fighter-jet title */
 .status::before,
 .status::after {
   content: "";
-  width: clamp(28px, 6vw, 64px);
-  height: 1px;
-  background: linear-gradient(to right, transparent, var(--gold));
+  width: clamp(44px, 9vw, 104px);
+  height: 11px;
+  transform: skewX(-32deg) scaleX(0);
+  animation: stripes 0.9s 3.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-.status::after { background: linear-gradient(to left, transparent, var(--gold)); }
+.status::before {
+  transform-origin: right center;
+  background:
+    linear-gradient(to left, var(--gold), rgba(240,168,96,0)) right 0 / 100% 2px no-repeat,
+    linear-gradient(to left, var(--gold), rgba(240,168,96,0)) right 4.5px / 74% 2px no-repeat,
+    linear-gradient(to left, var(--gold), rgba(240,168,96,0)) right 9px / 48% 2px no-repeat;
+}
+.status::after {
+  transform-origin: left center;
+  background:
+    linear-gradient(to right, var(--gold), rgba(240,168,96,0)) left 0 / 100% 2px no-repeat,
+    linear-gradient(to right, var(--gold), rgba(240,168,96,0)) left 4.5px / 74% 2px no-repeat,
+    linear-gradient(to right, var(--gold), rgba(240,168,96,0)) left 9px / 48% 2px no-repeat;
+}
+@keyframes stripes { to { transform: skewX(-32deg) scaleX(1); } }
 
 .dot {
   width: 7px;
@@ -183,6 +199,7 @@ main {
   .title span { animation: none; opacity: 1; transform: none; filter: none; }
   .title::after, .title::before { animation: none; opacity: 0; }
   .status { animation: none; opacity: 1; }
+  .status::before, .status::after { animation: none; transform: skewX(-32deg); }
   .dot { animation: none; opacity: 1; }
 }
 </style>
@@ -212,31 +229,24 @@ main {
     };
   }
 
-  /* ---------- T-6 Texan silhouette, drawn level (1000 × 300) ----------
-     Taildragger: the whole aircraft is tilted so both wheels touch the ground. */
+  /* ---------- T-6 Texan seen head-on (1000 × 300, ground at y = 300) ---------- */
   const PLANE = new Path2D(
-    // spinner and round radial-engine cowling
-    'M18,150 C22,136 40,128 58,126 L58,174 C40,172 22,164 18,150 Z ' +
-    'M58,112 C70,98 120,94 190,98 L190,204 C120,208 70,204 58,190 Z ' +
-    // fuselage, tapering to the tail
-    'M186,98 L300,92 L565,94 C700,104 830,126 935,140 L940,162 C830,168 700,176 560,192 L430,202 L186,206 Z ' +
-    // long tandem greenhouse canopy
-    'M300,94 C320,66 360,56 420,54 L520,54 C545,56 560,72 566,95 Z ' +
-    // fin and rudder
-    'M815,134 L882,60 C896,46 922,44 940,50 C958,58 962,84 958,110 L955,166 L928,164 Z ' +
-    // horizontal stabiliser, seen edge-on
-    'M790,150 L966,144 L969,156 L790,162 Z ' +
-    // low wing, edge-on with a hint of dihedral
-    'M245,196 L565,188 L580,203 L245,214 Z ' +
-    // main gear leg and tail-wheel leg
-    'M292,206 L308,206 L294,250 L278,250 Z ' +
-    'M902,160 L912,160 L916,196 L906,196 Z'
+    // wings with dihedral, rounded tips, joined under the fuselage
+    'M30,150 L440,196 L560,196 L970,150 C992,150 992,166 970,166 L560,222 L440,222 L30,166 C8,166 8,150 30,150 Z ' +
+    // canopy hump and the fin peeking above it
+    'M460,142 C460,96 540,96 540,142 Z ' +
+    'M496,142 L497,84 L503,84 L504,142 Z ' +
+    // horizontal stabiliser behind, just under the wings
+    'M286,204 L714,204 L714,211 L286,211 Z ' +
+    // main gear legs
+    'M366,200 L378,200 L376,250 L364,250 Z ' +
+    'M622,200 L634,200 L636,250 L624,250 Z'
   );
-  const WHEELS = [[286, 254, 28], [911, 200, 10]];
-  const CANOPY = new Path2D('M306,92 C326,68 362,60 420,58 L518,58 C540,60 553,74 558,92 Z');
-  const CONTACT = [286, 282];                       // bottom of the main wheel
-  const TILT = Math.atan2(282 - 210, 911 - 286);    // nose-up attitude on the ground
-  const PROP = { x: 16, y: 150, r: 132 };
+  const BODY = { x: 500, y: 180, rx: 62, ry: 70 };          // fuselage behind the cowling
+  const COWL = { x: 500, y: 178, r: 58 };                   // round radial-engine cowling
+  const TIRES = [[359, 242, 22, 58], [619, 242, 22, 58]];    // x, y, w, h — seen face-on
+  const CANOPY = new Path2D('M466,140 C466,104 534,104 534,140 Z');
+  const PROP = { x: 500, y: 178, r: 108 };
 
   /* ---------- Layout ---------- */
   let W, H, dpr, yh, yT, ox0, ox1, oy0, sunX, sunY, sunR;
@@ -273,17 +283,19 @@ main {
 
     jet.gy = H * (mobile ? 0.8 : 0.84);                     // where the wheels touch
     const room = Math.max(H * 0.12, jet.gy - textBottom - H * 0.05);
-    const pw = Math.min(W * (mobile ? 0.9 : 0.78), room / 0.3, 1100);
+    const pw = Math.min(W * (mobile ? 0.92 : 0.7), room / 0.24, 1000);
     jet.s = pw / 1000;
-    jet.gx = W / 2 + (CONTACT[0] - 495) * jet.s;
+    jet.gx = W / 2 - 500 * jet.s;
 
-    yh = jet.gy - 115 * jet.s;                               // horizon behind the fuselage
+    yh = jet.gy - 64 * jet.s;                                // horizon under the wings
     yT = jet.gy - 6 * jet.s;                                 // hangar door threshold
     ox0 = W * (mobile ? 0.035 : 0.05);
     ox1 = W - ox0;
     oy0 = Math.max(H * 0.03, textTop - H * 0.15);
     sunR = M * 0.035;
-    sunX = Math.min(ox1 - sunR * 2.5, W / 2 + pw * 0.5 + W * 0.04);
+    // Sun past the right wingtip if there is room, otherwise glowing under the wing
+    const tipRoom = ox1 - (W / 2 + pw / 2);
+    sunX = tipRoom > sunR * 4 ? W / 2 + pw / 2 + tipRoom * 0.5 : W / 2 + pw * 0.3;
     sunY = yh + sunR * 0.25;
 
     buildSky();
@@ -490,16 +502,25 @@ main {
   function planeTransform(g, mirror, dx = 0, dy = 0) {
     g.translate(jet.gx + dx, jet.gy + dy);
     if (mirror) g.scale(1, -1);
-    g.rotate(TILT);
     g.scale(jet.s, jet.s);
-    g.translate(-CONTACT[0], -CONTACT[1]);
+    g.translate(0, -300);
+  }
+
+  function planeOutline(g) {
+    g.fill(PLANE);
+    g.beginPath(); g.ellipse(BODY.x, BODY.y, BODY.rx, BODY.ry, 0, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(COWL.x, COWL.y, COWL.r, 0, Math.PI * 2); g.fill();
+    for (const [x, y, w, h] of TIRES) {
+      g.beginPath();
+      g.roundRect ? g.roundRect(x, y, w, h, w / 2) : g.rect(x, y, w, h);
+      g.fill();
+    }
   }
 
   function drawJetShape(g, mirror) {
     g.save();
     planeTransform(g, mirror);
-    g.fill(PLANE);
-    for (const [x, y, r] of WHEELS) { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
+    planeOutline(g);
     g.restore();
   }
 
@@ -512,53 +533,76 @@ main {
     g.save();
     planeTransform(g, false);
 
-    // Warm rim light along the top edges
-    g.strokeStyle = 'rgba(255,150,80,0.5)';
-    g.lineWidth = 1.3 / jet.s;
+    // Warm rim light where the sunset wraps around the top edges
+    g.strokeStyle = 'rgba(255,150,80,0.55)';
+    g.lineWidth = 1.4 / jet.s;
     g.save();
-    g.beginPath();
-    g.rect(0, 0, 1000, 120);
-    g.clip();
+    g.beginPath(); g.rect(0, 0, 1000, 172); g.clip();
     g.stroke(PLANE);
+    g.beginPath(); g.arc(COWL.x, COWL.y, COWL.r, Math.PI * 1.05, Math.PI * 1.95); g.stroke();
     g.restore();
 
-    // Canopy glass catching the sunset, with its frame bars
-    const glass = g.createLinearGradient(300, 58, 560, 92);
-    glass.addColorStop(0, 'rgba(255,150,90,0.18)');
-    glass.addColorStop(0.7, 'rgba(255,190,120,0.45)');
-    glass.addColorStop(1, 'rgba(255,220,170,0.7)');
+    // Canopy glass glowing with the sky behind it, with frame and pilot
+    const glass = g.createLinearGradient(0, 104, 0, 140);
+    glass.addColorStop(0, 'rgba(255,190,130,0.55)');
+    glass.addColorStop(1, 'rgba(255,140,80,0.15)');
     g.fillStyle = glass;
     g.fill(CANOPY);
+    g.fillStyle = '#060506';
+    g.beginPath(); g.ellipse(500, 128, 10, 12, 0, 0, Math.PI * 2); g.fill();
+    g.fillRect(488, 134, 24, 8);
     g.strokeStyle = '#060506';
-    g.lineWidth = 5;
+    g.lineWidth = 3;
     g.beginPath();
-    for (const x of [350, 395, 440, 480, 520]) { g.moveTo(x, 58); g.lineTo(x + 6, 94); }
-    g.moveTo(310, 80); g.lineTo(556, 80);
+    g.moveTo(480, 108); g.lineTo(482, 140);
+    g.moveTo(520, 108); g.lineTo(518, 140);
     g.stroke();
 
-    // Exhaust stack glow at the cowling
-    g.fillStyle = 'rgba(255,120,60,0.55)';
-    g.beginPath(); g.ellipse(196, 190, 9, 4, 0.2, 0, Math.PI * 2); g.fill();
+    // Cowling: cooling gills ring and the engine face
+    g.strokeStyle = 'rgba(255,170,110,0.18)';
+    g.lineWidth = 1.5;
+    g.beginPath(); g.arc(COWL.x, COWL.y, COWL.r * 0.78, 0, Math.PI * 2); g.stroke();
+
+    // Landing lights in the wing leading edges
+    g.shadowColor = 'rgba(255,220,170,1)';
+    g.shadowBlur = 14 / jet.s;
+    g.fillStyle = 'rgba(255,236,200,0.95)';
+    for (const x of [262, 738]) {
+      g.beginPath(); g.ellipse(x, 189, 9, 5, 0, 0, Math.PI * 2); g.fill();
+    }
     g.restore();
   }
 
-  // Spinning propeller: a faint disc with a flickering blade
+  // Propeller: translucent disc with a spinning two-blade blur
   function drawProp(time, dx, dy) {
     ctx.save();
     planeTransform(ctx, false, dx, dy);
     const { x, y, r } = PROP;
-    ctx.fillStyle = 'rgba(255,180,120,0.07)';
-    ctx.beginPath(); ctx.ellipse(x, y, 7, r, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,190,130,0.35)';
-    ctx.lineWidth = 1.2 / jet.s;
-    ctx.beginPath(); ctx.ellipse(x, y, 7, r, 0, -Math.PI * 0.6, -Math.PI * 0.4); ctx.stroke();
-    ctx.beginPath(); ctx.ellipse(x, y, 7, r, 0, Math.PI * 0.4, Math.PI * 0.6); ctx.stroke();
-    const a = reduce ? 0.6 : time * 0.045;
-    const len = r * Math.abs(Math.cos(a));
-    ctx.strokeStyle = 'rgba(6,5,6,0.45)';
-    ctx.lineWidth = 7;
+    const disc = ctx.createRadialGradient(x, y, COWL.r * 0.6, x, y, r);
+    disc.addColorStop(0, 'rgba(255,190,130,0)');
+    disc.addColorStop(0.85, 'rgba(255,190,130,0.08)');
+    disc.addColorStop(1, 'rgba(255,200,140,0.22)');
+    ctx.fillStyle = disc;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+
+    const a = reduce ? 0.5 : time * 0.035;
     ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(x, y - len); ctx.lineTo(x, y + len); ctx.stroke();
+    for (let k = 0; k < 3; k++) {
+      // Trailing ghosts sell the motion blur
+      const ang = a - k * 0.12;
+      ctx.strokeStyle = `rgba(6,5,6,${0.5 - k * 0.15})`;
+      ctx.lineWidth = 12 - k * 3;
+      ctx.beginPath();
+      ctx.moveTo(x - Math.cos(ang) * r * 0.97, y - Math.sin(ang) * r * 0.97);
+      ctx.lineTo(x + Math.cos(ang) * r * 0.97, y + Math.sin(ang) * r * 0.97);
+      ctx.stroke();
+    }
+    // Spinner
+    ctx.fillStyle = '#0b0a0b';
+    ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,170,110,0.5)';
+    ctx.lineWidth = 1.2 / jet.s;
+    ctx.beginPath(); ctx.arc(x, y, 11, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
     ctx.restore();
   }
 
