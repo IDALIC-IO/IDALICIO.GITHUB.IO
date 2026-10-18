@@ -7,7 +7,7 @@
 <title>IDALIC.IO — Em breve</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500&family=Barlow+Semi+Condensed:wght@500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500&family=Orbitron:wght@600;700&display=swap" rel="stylesheet" />
 
 <style>
 :root {
@@ -45,8 +45,8 @@ canvas {
   position: fixed;
   inset: 0;
   background:
-    linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.15) 38%, transparent 60%),
-    linear-gradient(to right, rgba(0,0,0,0.45) 0%, transparent 55%);
+    radial-gradient(ellipse 60% 40% at 50% 50%, rgba(0,0,0,0.45), transparent 75%),
+    linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 35%);
   pointer-events: none;
 }
 
@@ -67,28 +67,31 @@ main {
   height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   padding:
     calc(var(--edge) + env(safe-area-inset-top, 0px))
     var(--edge)
-    calc(clamp(56px, 12vh, 120px) + env(safe-area-inset-bottom, 0px));
+    calc(var(--edge) + env(safe-area-inset-bottom, 0px));
   pointer-events: none;
 }
 
 .title {
   margin: 0;
-  font-family: "Barlow Semi Condensed", "Barlow", sans-serif;
-  font-weight: 600;
-  font-size: clamp(2.8rem, 9vw, 7.2rem);
-  line-height: 0.95;
-  letter-spacing: 0.04em;
+  font-family: "Orbitron", "Barlow", sans-serif;
+  font-weight: 700;
+  font-size: clamp(2rem, 8.6vw, 6.6rem);
+  line-height: 1;
+  letter-spacing: 0.18em;
+  padding-left: 0.18em;
+  white-space: nowrap;
   opacity: 0;
   transform: translateY(18px);
   animation: in 1.4s 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .status {
-  align-self: flex-start;
   margin-top: clamp(20px, 3.5vh, 32px);
   display: inline-flex;
   align-items: center;
@@ -97,7 +100,8 @@ main {
   border: 2px solid var(--white);
   font-size: 0.95rem;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
   opacity: 0;
   transform: translateY(18px);
   animation: in 1.4s 1.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -163,7 +167,7 @@ main {
   <h1 class="title">IDALIC.IO</h1>
   <div class="status">
     <span class="dot" aria-hidden="true"></span>
-    <span>Em breve</span>
+    <span>EM BREVE</span>
   </div>
 </main>
 
