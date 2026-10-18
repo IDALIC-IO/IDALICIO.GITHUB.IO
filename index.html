@@ -14,7 +14,7 @@
   color-scheme: dark;
   --black: #000000;
   --white: #ffffff;
-  --gold: #d9b77c;
+  --gold: #f0a860;
   --alert: #ff3b30;
 }
 
@@ -41,11 +41,11 @@ canvas {
 .veil {
   position: fixed;
   left: 50%;
-  top: 50%;
+  top: 37%;
   width: min(130vw, 1200px);
   height: min(40vh, 340px);
   transform: translate(-50%, -50%);
-  background: radial-gradient(ellipse at center, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.4) 45%, transparent 70%);
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.2) 45%, transparent 70%);
   pointer-events: none;
   z-index: 1;
 }
@@ -59,7 +59,7 @@ main {
   align-items: center;
   justify-content: center;
   gap: clamp(18px, 3.2vh, 30px);
-  padding: env(safe-area-inset-top, 0px) 20px env(safe-area-inset-bottom, 0px);
+  padding: env(safe-area-inset-top, 0px) 20px calc(26vh + env(safe-area-inset-bottom, 0px));
   text-align: center;
   pointer-events: none;
 }
@@ -126,7 +126,7 @@ main {
   top: 50%;
   height: 60%;
   transform: translateY(-50%);
-  background: radial-gradient(ellipse at center, rgba(217,183,124,0.22), transparent 70%);
+  background: radial-gradient(ellipse at center, rgba(240,150,80,0.25), transparent 70%);
   filter: blur(20px);
   z-index: -1;
   opacity: 0;
@@ -179,48 +179,16 @@ main {
 @keyframes fade   { to { opacity: 1; } }
 @keyframes blink  { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 
-
-/* Carousel progress: one segment per planet, the active one fills over 3 s */
-.dots {
-  position: fixed;
-  left: 50%;
-  bottom: calc(clamp(24px, 5vh, 44px) + env(safe-area-inset-bottom, 0px));
-  transform: translateX(-50%);
-  display: flex;
-  gap: 8px;
-  z-index: 3;
-  opacity: 0;
-  animation: fade 1.2s 3.4s ease forwards;
-  pointer-events: none;
-}
-.dots i {
-  position: relative;
-  display: block;
-  width: clamp(18px, 3.4vw, 34px);
-  height: 2px;
-  background: rgba(255,255,255,0.22);
-  overflow: hidden;
-}
-.dots i b {
-  position: absolute;
-  inset: 0;
-  width: 0;
-  background: var(--gold);
-  box-shadow: 0 0 6px rgba(217,183,124,0.8);
-}
-.dots i.done b { width: 100%; background: rgba(255,255,255,0.6); box-shadow: none; }
-
 @media (prefers-reduced-motion: reduce) {
   .title span { animation: none; opacity: 1; transform: none; filter: none; }
   .title::after, .title::before { animation: none; opacity: 0; }
   .status { animation: none; opacity: 1; }
   .dot { animation: none; opacity: 1; }
-  .dots { animation: none; opacity: 1; }
 }
 </style>
 </head>
 <body>
-<canvas id="space" aria-hidden="true"></canvas>
+<canvas id="scene" aria-hidden="true"></canvas>
 <div class="veil" aria-hidden="true"></div>
 
 <main>
@@ -231,464 +199,506 @@ main {
   </div>
 </main>
 
-<div class="dots" id="dots" aria-hidden="true"><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i></div>
-
 <script>
 (() => {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const canvas = document.getElementById('space');
+  const canvas = document.getElementById('scene');
   const ctx = canvas.getContext('2d');
-  const segs = [...document.querySelectorAll('#dots i')];
 
-  const HOLD = 3000;      // each planet stays 3 s
-  const TRANS = 900;      // crossfade length
-
-  /* ---------- Noise helpers ---------- */
   function rng(seed) {
     return () => {
       seed = (seed * 16807) % 2147483647;
       return (seed - 1) / 2147483646;
     };
   }
-  const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-  const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
-  const N1 = Array.from({ length: 512 }, rng(9));
-  function n1(x) {
-    const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f);
-    const a = N1[((i % 512) + 512) % 512], b = N1[(((i + 1) % 512) + 512) % 512];
-    return a + (b - a) * u;
-  }
+  /* ---------- Business-jet silhouette (1000 × 220, ground at y = 215) ---------- */
+  const JET = new Path2D(
+    // fuselage
+    'M8,150 C14,132 50,116 110,110 L160,104 C185,95 215,92 250,92 L760,94 C820,96 860,100 905,112 L975,126 C980,128 980,134 975,136 C900,150 840,158 760,160 L200,164 C120,166 40,164 8,150 Z ' +
+    // fin and T-tail
+    'M790,100 L885,20 L942,17 L930,62 L918,114 Z ' +
+    'M860,24 L978,12 L984,20 L880,32 Z ' +
+    // rear-mounted engine and pylon
+    'M676,92 C673,83 684,78 704,78 L790,80 C806,81 815,86 815,92 C815,98 806,103 790,104 L704,105 C684,105 674,100 676,92 Z ' +
+    // wing and winglet
+    'M360,150 L560,148 L700,176 L690,180 L520,168 L380,166 Z ' +
+    'M686,177 L712,150 L720,152 L700,181 Z ' +
+    // landing gear
+    'M150,160 L158,160 L158,198 L150,198 Z ' +
+    'M500,160 L512,160 L512,194 L500,194 Z'
+  );
+  const WHEELS = [[154, 204, 11], [494, 202, 13], [518, 202, 13]];
 
-  const G = 256;
-  const L2 = Array.from({ length: G * G }, rng(1971));
-  function vn(x, y, px, py) {
-    const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
-    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
-    const at = (a, b) => L2[((((b % py) + py) % py) % G) * G + ((((a % px) + px) % px) % G)];
-    const A = at(xi, yi), B = at(xi + 1, yi), C = at(xi, yi + 1), D = at(xi + 1, yi + 1);
-    return A + (B - A) * u + (C - A) * v + (A - B - C + D) * u * v;
-  }
-  // Tileable in longitude (u), seeded by an offset
-  function fbm(u, v, oct, off = 0) {
-    let s = 0, a = 0.5, f = 1;
-    for (let o = 0; o < oct; o++) {
-      const px = 6 * f, py = 3 * f;
-      s += a * vn(u * px + off * 17, v * py + off * 31, px, py + 64);
-      a *= 0.5; f *= 2;
-    }
-    return s;
-  }
+  /* ---------- Layout ---------- */
+  let W, H, dpr, yh, yT, ox0, ox1, oy0, sunX, sunY, sunR;
+  let jet = { s: 1, x: 0, y: 0 };
+  let skyLayer, hangarLayer, jetLayer, floorLayer;
+  let lights = [], dust = [];
+  let t0 = 0;
+  const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
 
-  /* ---------- Planet surface textures (equirectangular) ---------- */
-  const TW = 512, TH = 256;
-
-  function makeTex(fn) {
-    const t = new Uint8ClampedArray(TW * TH * 3);
-    for (let y = 0; y < TH; y++) {
-      const v = y / TH;
-      const lat = (0.5 - v) * Math.PI;
-      for (let x = 0; x < TW; x++) {
-        const c = fn(x / TW, v, lat);
-        const j = (y * TW + x) * 3;
-        t[j] = c[0]; t[j + 1] = c[1]; t[j + 2] = c[2];
-      }
-    }
-    return t;
-  }
-
-  function spot(u, lat, s) {
-    let du = u - s.u; du -= Math.round(du);
-    return Math.exp(-((du / s.w) ** 2 + ((lat - s.lat) / s.h) ** 2));
-  }
-
-  function bands(lat, palette, freq, seed) {
-    const pv = n1(lat * freq + seed) * 0.6 + n1(lat * freq * 2.7 + seed * 2) * 0.3 + n1(lat * freq * 6) * 0.1;
-    const t = pv * (palette.length - 1);
-    const i = Math.min(palette.length - 2, Math.floor(t));
-    return mix(palette[i], palette[i + 1], t - i);
-  }
-
-  function craterField(seed, count) {
-    const r = rng(seed);
-    return Array.from({ length: count }, () => ({ u: r(), lat: (r() - 0.5) * 2.6, s: 0.01 + Math.pow(r(), 3) * 0.06 }));
-  }
-
-  const TEXTURES = {
-    mercury: (() => {
-      const craters = craterField(31, 70);
-      return (u, v, lat) => {
-        let g = 70 + 110 * fbm(u, v, 5, 1);
-        for (const c of craters) {
-          let du = (u - c.u); du -= Math.round(du);
-          du *= Math.cos(lat) * 2;
-          const d = Math.hypot(du, (lat - c.lat) / Math.PI) / c.s;
-          if (d < 1.25) g += d < 0.85 ? -22 * (1 - d * 0.5) : 30 * (1 - Math.abs(d - 1) / 0.25);
-        }
-        return [g * 1.02, g * 0.98, g * 0.94];
-      };
-    })(),
-
-    venus: (u, v, lat) => {
-      const w = fbm(u, v, 3, 2);
-      const n = fbm(u + w * 0.35, v + w * 0.15, 5, 3);
-      const streak = n1(lat * 14 + w * 6) * 0.3;
-      return mix([190, 150, 92], [246, 226, 178], Math.min(1, n * 1.1 + streak));
-    },
-
-    earth: (u, v, lat) => {
-      const h = fbm(u, v, 6, 4) + 0.08 * (n1(lat * 3 + 5) - 0.5);
-      let c;
-      if (h < 0.48) c = mix([8, 30, 78], [22, 78, 150], smooth(0.28, 0.48, h));
-      else {
-        const dry = smooth(0.45, 0.75, fbm(u * 2, v * 2, 3, 5)) * (1 - smooth(0.6, 1.0, Math.abs(lat)));
-        c = mix([52, 98, 44], [176, 146, 96], dry);
-        c = mix(c, [120, 110, 92], smooth(0.62, 0.75, h));
-      }
-      const ice = smooth(1.15, 1.3, Math.abs(lat) + (h - 0.5) * 0.3);
-      c = mix(c, [236, 242, 248], ice);
-      const cl = smooth(0.52, 0.72, fbm(u * 1.5 + 0.2, v * 1.2, 5, 6));
-      return mix(c, [250, 250, 252], cl * 0.85);
-    },
-
-    mars: (u, v, lat) => {
-      let n = fbm(u, v, 6, 7);
-      n -= 0.12 * Math.exp(-(((lat + 0.35) / 0.35) ** 2)) * fbm(u * 2, v * 2, 3, 8);
-      const ramp = [[42, 18, 12], [92, 36, 20], [150, 62, 30], [190, 96, 50], [214, 132, 80], [232, 170, 120]];
-      const t = Math.min(1, Math.max(0, (n - 0.2) * 1.6)) * (ramp.length - 1);
-      const i = Math.min(ramp.length - 2, Math.floor(t));
-      let c = mix(ramp[i], ramp[i + 1], t - i);
-      const cap = smooth(1.3, 1.38, Math.abs(lat) + 0.05 * (fbm(u * 3, v * 3, 2, 9) - 0.5));
-      return mix(c, [232, 222, 215], cap * 0.85);
-    },
-
-    jupiter: (u, v, lat) => {
-      const warp = (fbm(u, v, 5, 10) - 0.5) * 0.12;
-      let c = bands(lat + warp, [[150, 100, 70], [205, 172, 138], [236, 222, 196], [176, 124, 88], [244, 236, 218]], 9, 3);
-      c = c.map(q => q * (0.9 + 0.2 * fbm(u * 5, v * 0.7, 4, 11)));
-      const grs = { u: 0.3, lat: -0.38, w: 0.065, h: 0.05 };
-      const k = spot(u, lat, grs);
-      c = mix(c, [246, 228, 210], smooth(0.25, 0.45, k) * (1 - smooth(0.55, 0.75, k)) * 0.6);
-      c = mix(c, [190, 82, 52], smooth(0.55, 0.9, k));
-      return c;
-    },
-
-    saturn: (u, v, lat) => {
-      const warp = (fbm(u, v, 5, 12) - 0.5) * 0.09;
-      let c = bands(lat + warp, [[226, 206, 160], [214, 182, 126], [196, 156, 98], [238, 226, 194]], 26, 40);
-      c = c.map(q => q * (0.9 + 0.2 * fbm(u * 4, v * 0.6 + 0.3, 4, 13)));
-      for (const s of [
-        { u: 0.18, lat: -0.38, w: 0.035, h: 0.035, c: [246, 238, 220], a: 0.9 },
-        { u: 0.52, lat: 0.62, w: 0.06, h: 0.03, c: [250, 244, 230], a: 0.85 },
-        { u: 0.77, lat: -0.15, w: 0.025, h: 0.02, c: [150, 110, 70], a: 0.7 }
-      ]) c = mix(c, s.c, spot(u, lat, s) * s.a);
-      return mix(c, [140, 158, 172], smooth(0.95, 1.25, lat) * 0.55);
-    },
-
-    uranus: (u, v, lat) => {
-      const b = n1(lat * 10 + 3) * 0.5 + n1(lat * 30) * 0.2;
-      let c = mix([150, 206, 216], [196, 234, 238], b);
-      return mix(c, [210, 240, 242], smooth(0.9, 1.4, lat) * 0.5);
-    },
-
-    neptune: (u, v, lat) => {
-      const warp = (fbm(u, v, 4, 14) - 0.5) * 0.08;
-      let c = bands(lat + warp, [[30, 60, 160], [52, 98, 210], [72, 128, 230], [40, 80, 190]], 8, 7);
-      c = mix(c, [18, 34, 100], smooth(0.4, 0.8, spot(u, lat, { u: 0.6, lat: -0.35, w: 0.06, h: 0.035 })));
-      const cl = smooth(0.62, 0.78, fbm(u * 3, v * 0.5, 4, 15)) * Math.exp(-(((Math.abs(lat) - 0.45) / 0.2) ** 2));
-      return mix(c, [230, 240, 255], cl * 0.8);
-    }
-  };
-
-  /* ---------- Rings ---------- */
-  const SATURN_RINGS = [
-    [1.24, 1.53, 0.16, 150, 136, 118],
-    [1.53, 1.95, 0.92, 232, 214, 176],
-    [1.95, 2.03, 0.05, 120, 110, 95],
-    [2.03, 2.27, 0.62, 210, 192, 158]
-  ];
-  const URANUS_RINGS = [
-    [1.64, 1.655, 0.14, 120, 130, 138],
-    [1.72, 1.735, 0.12, 120, 130, 138],
-    [1.82, 1.84, 0.16, 125, 135, 142],
-    [1.95, 1.99, 0.3, 140, 150, 158]
-  ];
-  function ringAt(spec, r, fine) {
-    for (const g of spec) {
-      if (r >= g[0] && r < g[1]) {
-        let op = g[2];
-        if (fine) {
-          if (Math.abs(r - 2.214) < 0.006) op *= 0.1;
-          op *= 0.72 + 0.28 * (0.5 + 0.5 * Math.sin(r * 140) * Math.sin(r * 43 + 1.3));
-          op *= 0.85 + 0.3 * (n1(r * 140) - 0.5);
-        }
-        const e = Math.min(0.012, (g[1] - g[0]) / 3);
-        op *= smooth(g[0], g[0] + e, r) * (1 - smooth(g[1] - e, g[1], r));
-        return [op, g[3], g[4], g[5]];
-      }
-    }
-    return null;
-  }
-
-  /* ---------- The planets, in order from the Sun ---------- */
-  // k: size on screen, tilt: axis lean toward the viewer, roll: sideways lean,
-  // obl: flattening, spin: turns per ms, atm: rim glow colour
-  const PLANETS = [
-    { id: 'mercury', k: 0.8,  tilt: 0.05, roll: -0.02, obl: 1,     spin: 1 / 26000, atm: null },
-    { id: 'venus',   k: 0.9,  tilt: 0.05, roll: 0.05,  obl: 1,     spin: 1 / 34000, atm: [255, 214, 150] },
-    { id: 'earth',   k: 0.92, tilt: 0.25, roll: -0.4,  obl: 1,     spin: 1 / 22000, atm: [110, 170, 255] },
-    { id: 'mars',    k: 0.86, tilt: 0.25, roll: -0.44, obl: 1,     spin: 1 / 22000, atm: [255, 160, 110] },
-    { id: 'jupiter', k: 1.08, tilt: 0.05, roll: -0.05, obl: 0.935, spin: 1 / 16000, atm: [240, 210, 170] },
-    { id: 'saturn',  k: 0.62, tilt: 0.33, roll: -0.32, obl: 0.91,  spin: 1 / 18000, atm: [240, 214, 160], rings: SATURN_RINGS, fine: true },
-    { id: 'uranus',  k: 0.8,  tilt: 1.2,  roll: 0.45,  obl: 0.98,  spin: 1 / 20000, atm: [170, 230, 240], rings: URANUS_RINGS },
-    { id: 'neptune', k: 0.9,  tilt: 0.2,  roll: -0.5,  obl: 0.98,  spin: 1 / 20000, atm: [100, 150, 255] }
-  ];
-
-  const L = (() => { const v = [0.95, 0.32, 0.12]; const l = Math.hypot(...v); return v.map(c => c / l); })();
-
-  /* ---------- Shared sphere geometry ---------- */
-  let W, H, R, q, PW, stars = [];
-  let geo = null;   // per-pixel normal, coverage and lighting, shared by all planets
-
-  function buildGeometry() {
-    PW = Math.min(Math.round(2 * R * 1.08 * q), 620);
-    const nx = [], ny = [], nz = [], idx = [], alpha = [], shade = [];
-    const aa = 2.2 / PW;
-    for (let py = 0; py < PW; py++) {
-      for (let px = 0; px < PW; px++) {
-        const x = (px + 0.5) / PW * 2 - 1;
-        const y = 1 - (py + 0.5) / PW * 2;
-        const dd = x * x + y * y;
-        const dist = Math.sqrt(dd);
-        if (dist > 1 + aa) continue;
-        const z = Math.sqrt(Math.max(0, 1 - Math.min(1, dd)));
-        const dot = x * L[0] + y * L[1] + z * L[2];
-        const light = smooth(-0.12, 0.45, dot) * (0.55 + 0.45 * Math.max(0, dot));
-        const limb = 0.75 + 0.25 * Math.sqrt(z);
-        nx.push(x); ny.push(y); nz.push(z);
-        idx.push((py * PW + px) * 4);
-        alpha.push(Math.min(1, Math.max(0, (1 - dist) / aa + 0.5)) * 255);
-        shade.push(light * limb + 0.025 * Math.max(0, -dot + 0.2));
-      }
-    }
-    geo = {
-      nx: Float32Array.from(nx), ny: Float32Array.from(ny), nz: Float32Array.from(nz),
-      idx: Int32Array.from(idx), alpha: Uint8ClampedArray.from(alpha), shade: Float32Array.from(shade)
-    };
-  }
-
-  // Per-planet lookup tables: latitude row and longitude for every pixel
-  function preparePlanet(p) {
-    if (!p.tex) p.tex = makeTex(TEXTURES[p.id]);
-    const n = geo.idx.length;
-    const ty = new Int32Array(n), lon = new Float32Array(n);
-    const ct = Math.cos(p.tilt), st = Math.sin(p.tilt);
-    let shadeMul = null;
-    if (p.rings) shadeMul = new Float32Array(n);
-    const LN = L[1] * ct + L[2] * st;
-    for (let i = 0; i < n; i++) {
-      const x = geo.nx[i], y = geo.ny[i], z = geo.nz[i];
-      const sl = y * ct + z * st;                  // dot with the spin axis
-      const e2 = y * st - z * ct;
-      const lat = Math.asin(Math.max(-1, Math.min(1, sl)));
-      ty[i] = Math.min(TH - 1, Math.max(0, Math.floor((0.5 - lat / Math.PI) * TH))) * TW;
-      lon[i] = Math.atan2(x, e2) / (Math.PI * 2);
-      if (shadeMul) {
-        // Ring shadow falling on the planet
-        let m = 1;
-        const t = -sl / LN;
-        if (t > 0) {
-          const Q = [x + t * L[0], y + t * L[1], z + t * L[2]];
-          const rg = ringAt(p.rings, Math.hypot(Q[0], Q[1], Q[2]), p.fine);
-          if (rg) m = 1 - rg[0] * 0.85;
-        }
-        shadeMul[i] = m;
-      }
-    }
-    p.ty = ty; p.lon = lon; p.shadeMul = shadeMul;
-    if (p.rings) buildRings(p);
-    p.ready = true;
-  }
-
-  function buildRings(p) {
-    const Rp = R * p.k * q;
-    const half = Math.ceil(2.32 * Rp);
-    const size = half * 2;
-    const back = document.createElement('canvas');
-    const front = document.createElement('canvas');
-    back.width = front.width = back.height = front.height = size;
-    const bi = back.getContext('2d').createImageData(size, size);
-    const fi = front.getContext('2d').createImageData(size, size);
-    const cr = Math.cos(-p.roll), sr = Math.sin(-p.roll);
-    const N = [0, Math.cos(p.tilt), Math.sin(p.tilt)];
-    for (let py = 0; py < size; py++) {
-      for (let px = 0; px < size; px++) {
-        const sx = (px + 0.5 - half) / Rp;
-        const sy = -(py + 0.5 - half) / Rp;
-        const x = sx * cr - sy * sr;
-        const y = sx * sr + sy * cr;
-        const zr = -(y * N[1]) / N[2];
-        const rr = Math.hypot(x, y, zr);
-        if (rr < 1.2 || rr > 2.3) continue;
-        const rg = ringAt(p.rings, rr, p.fine);
-        if (!rg || rg[0] < 0.003) continue;
-        const ys = y / p.obl;
-        const dd = x * x + ys * ys;
-        const zs = dd < 1 ? Math.sqrt(1 - dd) : -Infinity;
-        const coversDisk = dd < 1 && zr > zs;
-        const nearLimb = zr > 0 && dd >= 1 && dd < 1.03;
-        const b = x * L[0] + y * L[1] + zr * L[2];
-        const disc = b * b - (rr * rr - 1);
-        const lit = disc > 0 && -b - Math.sqrt(disc) > 0 ? 0.04 : 0.95;
-        const i = (py * size + px) * 4;
-        const put = (d, a) => { d[i] = rg[1] * lit; d[i + 1] = rg[2] * lit; d[i + 2] = rg[3] * lit; d[i + 3] = a * 255; };
-        if (coversDisk) put(fi.data, rg[0]);
-        else { put(bi.data, rg[0]); if (nearLimb) put(fi.data, rg[0] * 0.5); }
-      }
-    }
-    back.getContext('2d').putImageData(bi, 0, 0);
-    front.getContext('2d').putImageData(fi, 0, 0);
-    p.back = back; p.front = front; p.ringSize = size / q;
-  }
-
-  // Two pixel buffers so the outgoing and incoming planets can crossfade
-  const bufs = [0, 1].map(() => ({ c: document.createElement('canvas') }));
-  function sizeBuffers() {
-    for (const b of bufs) {
-      b.c.width = b.c.height = PW;
-      b.ctx = b.c.getContext('2d');
-      b.img = b.ctx.createImageData(PW, PW);
-    }
-  }
-
-  function paintPlanet(p, buf, rot) {
-    const d = buf.img.data, tex = p.tex, ty = p.ty, lon = p.lon, sm = p.shadeMul;
-    const idx = geo.idx, sh = geo.shade, al = geo.alpha;
-    for (let k = 0; k < idx.length; k++) {
-      let u = lon[k] + rot;
-      u -= Math.floor(u);
-      const j = (ty[k] + ((u * TW) | 0)) * 3;
-      const s = sm ? sh[k] * sm[k] : sh[k];
-      const i = idx[k];
-      d[i] = tex[j] * s; d[i + 1] = tex[j + 1] * s; d[i + 2] = tex[j + 2] * s; d[i + 3] = al[k];
-    }
-    buf.ctx.putImageData(buf.img, 0, 0);
-  }
-
-  function drawPlanet(p, buf, time, scale, alpha) {
-    if (!p.ready) preparePlanet(p);
-    paintPlanet(p, buf, reduce ? 0.15 : 0.15 + time * p.spin);
-    const r = R * p.k;
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.translate(W / 2, H / 2);
-    ctx.scale(scale, scale);
-    if (p.back) ctx.drawImage(p.back, -p.ringSize / 2, -p.ringSize / 2, p.ringSize, p.ringSize);
-
-    ctx.save();
-    ctx.rotate(-p.roll);
-    ctx.drawImage(buf.c, -r, -r * p.obl, r * 2, r * 2 * p.obl);
-
-    // Thin atmosphere glow on the sunlit limb
-    if (p.atm) {
-      const la = Math.atan2(-L[1], L[0]) + p.roll;
-      const g = ctx.createLinearGradient(Math.cos(la) * r, Math.sin(la) * r, -Math.cos(la) * r, -Math.sin(la) * r);
-      g.addColorStop(0, `rgba(${p.atm.join(',')},0.75)`);
-      g.addColorStop(0.45, `rgba(${p.atm.join(',')},0)`);
-      ctx.strokeStyle = g;
-      ctx.lineWidth = Math.max(1.5, r * 0.012);
-      ctx.shadowColor = `rgba(${p.atm.join(',')},0.8)`;
-      ctx.shadowBlur = r * 0.06;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, r + 0.5, r * p.obl + 0.5, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    }
-    ctx.restore();
-
-    if (p.front) ctx.drawImage(p.front, -p.ringSize / 2, -p.ringSize / 2, p.ringSize, p.ringSize);
-    ctx.restore();
+  function layer() {
+    const c = document.createElement('canvas');
+    c.width = W * dpr; c.height = H * dpr;
+    const g = c.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return [c, g];
   }
 
   function layout() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    q = Math.min(dpr, 1.5);
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
     W = window.innerWidth;
     H = window.innerHeight;
     canvas.width = W * dpr;
     canvas.height = H * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    R = W < 700 ? W * 0.42 : Math.min(W * 0.3, H * 0.4);
 
-    const r = rng(77);
-    stars = Array.from({ length: Math.round((W * H) / 2800) }, () => ({
-      x: r() * W, y: r() * H, s: r() < 0.05 ? 1.5 : r() * 1 + 0.3, a: r() * 0.55 + 0.1
+    const mobile = W < 700;
+    yh = H * (mobile ? 0.64 : 0.6);     // horizon
+    yT = H * (mobile ? 0.72 : 0.69);                     // hangar door threshold
+    ox0 = W * (mobile ? 0.04 : 0.08);   // door opening
+    ox1 = W * (mobile ? 0.96 : 0.92);
+    oy0 = H * 0.11;
+    sunX = W * (mobile ? 0.78 : 0.83);
+    sunR = Math.min(W, H) * 0.035;
+    sunY = yh + sunR * 0.25;
+
+    const pw = mobile ? W * 0.94 : Math.min(W * 0.6, H * 0.95);
+    jet.s = pw / 1000;
+    jet.x = W / 2 - pw / 2;
+    jet.y = yT + H * 0.025 - 215 * jet.s;
+
+    buildSky();
+    buildHangar();
+    buildJet();
+    buildFloor();
+
+    // Taxiway lights on the apron, two rows receding
+    lights = [];
+    const r = rng(5);
+    for (const row of [{ y: yh + (yT - yh) * 0.18, gap: 14, s: 1.1 }, { y: yh + (yT - yh) * 0.55, gap: 30, s: 1.8 }]) {
+      for (let x = ox0 + 6; x < ox1; x += row.gap * Math.max(1, W / 1440 + 0.4)) {
+        lights.push({
+          x, y: row.y, s: row.s,
+          blue: r() < 0.6,
+          ph: r() * 6.28,
+          on: 1400 + ((x - ox0) / (ox1 - ox0)) * 1400 + (row.s > 1.5 ? 200 : 0)
+        });
+      }
+    }
+
+    const d = rng(12);
+    dust = Array.from({ length: mobile ? 50 : 110 }, () => ({
+      x: d() * W, y: oy0 + d() * (H - oy0), z: 0.3 + d() * 0.7,
+      vx: (d() - 0.5) * 0.06, vy: -0.02 - d() * 0.05, ph: d() * 6.28
     }));
-
-    buildGeometry();
-    sizeBuffers();
-    for (const p of PLANETS) { p.ready = false; p.back = p.front = null; }
   }
 
-  /* ---------- Carousel ---------- */
-  let current = 0, previous = -1, phase = 0, last = 0, clock = 0;
+  /* Sky: sunset glow at the horizon fading to black overhead */
+  function buildSky() {
+    const [c, g] = layer();
+    skyLayer = c;
+    const sky = g.createLinearGradient(0, oy0, 0, yh);
+    sky.addColorStop(0, '#000000');
+    sky.addColorStop(0.3, '#0b0712');
+    sky.addColorStop(0.55, '#2a1124');
+    sky.addColorStop(0.75, '#6e2a2c');
+    sky.addColorStop(0.9, '#c85a2e');
+    sky.addColorStop(1, '#f6a24a');
+    g.fillStyle = sky;
+    g.fillRect(0, 0, W, yh);
 
-  // Prepare the remaining planets in the background, one at a time
-  function warmUp(i) {
-    if (i >= PLANETS.length) return;
-    setTimeout(() => { if (!PLANETS[i].ready) preparePlanet(PLANETS[i]); warmUp(i + 1); }, 60);
+    // Sun glow
+    const glow = g.createRadialGradient(sunX, sunY, 0, sunX, sunY, Math.max(W, H) * 0.55);
+    glow.addColorStop(0, 'rgba(255,214,150,0.9)');
+    glow.addColorStop(0.05, 'rgba(255,170,90,0.55)');
+    glow.addColorStop(0.25, 'rgba(230,100,50,0.16)');
+    glow.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = glow;
+    g.fillRect(0, 0, W, yh);
+
+    // Thin high clouds catching the last light
+    const r = rng(21);
+    for (let i = 0; i < 9; i++) {
+      const cy = yh - (0.08 + r() * 0.3) * (yh - oy0);
+      const cw = W * (0.15 + r() * 0.35);
+      const cx = ox0 + r() * (ox1 - ox0);
+      const ch = 2 + r() * 5;
+      const cl = g.createLinearGradient(cx - cw / 2, 0, cx + cw / 2, 0);
+      const warm = 1 - (yh - cy) / (yh - oy0);
+      cl.addColorStop(0, 'rgba(255,140,90,0)');
+      cl.addColorStop(0.5, `rgba(255,${120 + warm * 60},${80 + warm * 30},${0.12 + warm * 0.22})`);
+      cl.addColorStop(1, 'rgba(255,140,90,0)');
+      g.fillStyle = cl;
+      g.beginPath();
+      g.ellipse(cx, cy, cw / 2, ch, 0, 0, Math.PI * 2);
+      g.fill();
+    }
+
+    // Sun disc, half set
+    g.save();
+    g.beginPath();
+    g.rect(0, 0, W, yh);
+    g.clip();
+    g.fillStyle = '#fff4dc';
+    g.shadowColor = 'rgba(255,200,120,1)';
+    g.shadowBlur = sunR * 1.5;
+    g.beginPath();
+    g.arc(sunX, sunY, sunR, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+
+    // Distant ridge, control tower and hangars on the horizon
+    g.fillStyle = '#0a0608';
+    g.beginPath();
+    g.moveTo(0, yh);
+    for (let x = 0; x <= W; x += 8) {
+      const h = 6 + 10 * Math.sin(x * 0.004) + 6 * Math.sin(x * 0.013 + 1) + 3 * Math.sin(x * 0.05);
+      g.lineTo(x, yh - Math.max(2, h * (Math.min(W, H) / 900)));
+    }
+    g.lineTo(W, yh);
+    g.closePath();
+    g.fill();
+
+    const k = Math.min(W, H) / 900;
+    const tx = W * 0.24;
+    g.fillRect(tx - 4 * k, yh - 70 * k, 8 * k, 70 * k);
+    g.beginPath();
+    g.moveTo(tx - 16 * k, yh - 70 * k);
+    g.lineTo(tx + 16 * k, yh - 70 * k);
+    g.lineTo(tx + 12 * k, yh - 86 * k);
+    g.lineTo(tx - 12 * k, yh - 86 * k);
+    g.closePath();
+    g.fill();
+    g.fillRect(tx - 1, yh - 98 * k, 2, 12 * k);
+    g.fillStyle = 'rgba(255,190,120,0.55)';
+    g.fillRect(tx - 11 * k, yh - 83 * k, 22 * k, 6 * k);
+    g.fillStyle = '#0a0608';
+    for (const [hx, hw, hh] of [[0.36, 60, 16], [0.44, 40, 12], [0.62, 80, 18]]) {
+      g.fillRect(W * hx, yh - hh * k, hw * k, hh * k);
+    }
+
+    // Wet apron reflecting the sky
+    const ap = g.createLinearGradient(0, yh, 0, yT);
+    ap.addColorStop(0, 'rgba(230,120,60,0.55)');
+    ap.addColorStop(0.35, 'rgba(110,40,30,0.4)');
+    ap.addColorStop(1, 'rgba(15,8,10,1)');
+    g.fillStyle = '#120a0c';
+    g.fillRect(0, yh, W, yT - yh);
+    g.fillStyle = ap;
+    g.fillRect(0, yh, W, yT - yh);
+
+    // Sun streak on the wet tarmac
+    const st = g.createLinearGradient(sunX - W * 0.08, 0, sunX + W * 0.08, 0);
+    st.addColorStop(0, 'rgba(255,190,110,0)');
+    st.addColorStop(0.5, 'rgba(255,200,130,0.55)');
+    st.addColorStop(1, 'rgba(255,190,110,0)');
+    g.fillStyle = st;
+    g.fillRect(sunX - W * 0.08, yh, W * 0.16, (yT - yh) * 0.8);
   }
 
-  function updateDots() {
-    segs.forEach((s, i) => {
-      s.classList.toggle('done', i < current);
-      s.firstChild.style.width = i === current ? `${Math.min(100, (phase / HOLD) * 100)}%` : (i < current ? '' : '0');
-    });
+  /* Hangar: black walls around the open door, roof truss silhouetted against the sky */
+  function buildHangar() {
+    const [c, g] = layer();
+    hangarLayer = c;
+    g.fillStyle = '#030303';
+    g.fillRect(0, 0, W, yT);
+    g.globalCompositeOperation = 'destination-out';
+    g.fillRect(ox0, oy0, ox1 - ox0, yT - oy0);
+    g.globalCompositeOperation = 'source-over';
+
+    // Corrugated door panels pushed to the sides, catching faint warm spill
+    for (const [a, b] of [[0, ox0], [ox1, W]]) {
+      for (let x = a + 6; x < b; x += 7) {
+        const near = 1 - Math.min(1, Math.abs(x - (a === 0 ? ox0 : ox1)) / (W * 0.1));
+        g.fillStyle = `rgba(255,140,80,${0.05 + near * 0.08})`;
+        g.fillRect(x, oy0, 1, yT - oy0);
+      }
+    }
+
+    // Rim light on the door jambs
+    for (const x of [ox0, ox1]) {
+      const rim = g.createLinearGradient(0, oy0, 0, yT);
+      rim.addColorStop(0, 'rgba(255,150,80,0)');
+      rim.addColorStop(1, 'rgba(255,160,90,0.7)');
+      g.fillStyle = rim;
+      g.fillRect(x - 1, oy0, 2, yT - oy0);
+    }
+
+    // Roof truss
+    const tb = H * 0.075;
+    g.fillStyle = '#030303';
+    g.fillRect(ox0, oy0, ox1 - ox0, H * 0.012);
+    g.fillRect(ox0, oy0 + tb, ox1 - ox0, H * 0.008);
+    g.strokeStyle = '#030303';
+    g.lineWidth = Math.max(2, H * 0.004);
+    const bay = Math.max(40, W * 0.045);
+    g.beginPath();
+    for (let x = ox0, up = true; x < ox1; x += bay, up = !up) {
+      g.moveTo(x, up ? oy0 : oy0 + tb);
+      g.lineTo(Math.min(ox1, x + bay), up ? oy0 + tb : oy0);
+      g.moveTo(x, oy0);
+      g.lineTo(x, oy0 + tb);
+    }
+    g.stroke();
+
+    // Pendant lamps hanging from the truss
+    const M = Math.min(W, H);
+    for (const fx of [0.3, 0.5, 0.7]) {
+      const lx = W * fx, ly = oy0 + tb + H * 0.05;
+      g.strokeStyle = '#030303';
+      g.lineWidth = 1.5;
+      g.beginPath(); g.moveTo(lx, oy0 + tb); g.lineTo(lx, ly); g.stroke();
+      g.fillStyle = '#030303';
+      g.beginPath();
+      g.moveTo(lx - M * 0.018, ly + M * 0.014);
+      g.lineTo(lx + M * 0.018, ly + M * 0.014);
+      g.lineTo(lx + M * 0.006, ly);
+      g.lineTo(lx - M * 0.006, ly);
+      g.closePath();
+      g.fill();
+      const cone = g.createRadialGradient(lx, ly + M * 0.016, 0, lx, ly + M * 0.016, M * 0.045);
+      cone.addColorStop(0, 'rgba(255,200,140,0.4)');
+      cone.addColorStop(1, 'rgba(255,200,140,0)');
+      g.fillStyle = cone;
+      g.beginPath();
+      g.arc(lx, ly + M * 0.016, M * 0.045, 0, Math.PI * 2);
+      g.fill();
+    }
   }
 
-  const ease = x => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);
+  function drawJetShape(g, mirror) {
+    g.save();
+    if (mirror) {
+      g.translate(jet.x, jet.y + 215 * jet.s * 2);
+      g.scale(jet.s, -jet.s);
+    } else {
+      g.translate(jet.x, jet.y);
+      g.scale(jet.s, jet.s);
+    }
+    g.fill(JET);
+    for (const [x, y, r] of WHEELS) { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
+    g.restore();
+  }
+
+  function buildJet() {
+    const [c, g] = layer();
+    jetLayer = c;
+    g.fillStyle = '#060506';
+    drawJetShape(g, false);
+
+    // Warm rim light along the top of the silhouette
+    g.save();
+    g.translate(jet.x, jet.y);
+    g.scale(jet.s, jet.s);
+    g.strokeStyle = 'rgba(255,150,80,0.45)';
+    g.lineWidth = 1.2 / jet.s;
+    g.save();
+    g.beginPath();
+    g.rect(0, 0, 1000, 112);
+    g.clip();
+    g.stroke(JET);
+    g.restore();
+
+    // Cabin windows glowing from inside
+    g.shadowColor = 'rgba(255,180,100,0.9)';
+    g.shadowBlur = 8 / jet.s;
+    g.fillStyle = 'rgba(255,196,130,0.9)';
+    for (let i = 0; i < 9; i++) {
+      g.beginPath();
+      g.ellipse(275 + i * 40, 118, 6.5, 8.5, 0, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.fillStyle = 'rgba(255,170,110,0.35)';
+    g.beginPath();
+    g.moveTo(165, 108); g.lineTo(200, 98); g.lineTo(228, 98); g.lineTo(222, 112); g.closePath();
+    g.fill();
+    g.restore();
+  }
+
+  /* Polished hangar floor reflecting the door, the sunset and the jet */
+  function buildFloor() {
+    const [c, g] = layer();
+    floorLayer = c;
+    g.fillStyle = '#050405';
+    g.fillRect(0, yT, W, H - yT);
+
+    // Mirror the door view onto the floor, then fade it out with depth and toward the sides
+    const [rc, rg] = layer();
+    rg.save();
+    rg.beginPath();
+    rg.rect(ox0, yT, ox1 - ox0, H - yT);
+    rg.clip();
+    rg.translate(0, yT * 2);
+    rg.scale(1, -1);
+    rg.drawImage(skyLayer, 0, 0, W, H);
+    rg.restore();
+    rg.globalCompositeOperation = 'destination-in';
+    const fv = rg.createLinearGradient(0, yT, 0, yT + (H - yT) * 0.7);
+    fv.addColorStop(0, 'rgba(0,0,0,0.45)');
+    fv.addColorStop(1, 'rgba(0,0,0,0)');
+    rg.fillStyle = fv;
+    rg.fillRect(0, yT, W, H - yT);
+    const fh = rg.createLinearGradient(ox0, 0, ox1, 0);
+    fh.addColorStop(0, 'rgba(0,0,0,0)');
+    fh.addColorStop(0.12, 'rgba(0,0,0,1)');
+    fh.addColorStop(0.88, 'rgba(0,0,0,1)');
+    fh.addColorStop(1, 'rgba(0,0,0,0)');
+    rg.fillStyle = fh;
+    rg.fillRect(0, yT, W, H - yT);
+    g.save();
+    g.filter = 'blur(3px)';
+    g.drawImage(rc, 0, 0, W, H);
+    g.restore();
+
+    g.save();
+    g.globalAlpha = 0.5;
+    g.fillStyle = '#000';
+    drawJetShape(g, true);
+    g.restore();
+
+    // Light spilling in from the door toward the viewer
+    const spill = g.createLinearGradient(0, yT, 0, H);
+    spill.addColorStop(0, 'rgba(0,0,0,0)');
+    spill.addColorStop(0.6, 'rgba(0,0,0,0.75)');
+    spill.addColorStop(1, 'rgba(0,0,0,0.95)');
+    g.fillStyle = spill;
+    g.fillRect(0, yT, W, H - yT);
+
+    const shaft = g.createRadialGradient(sunX, yT, 0, sunX, yT, H * 0.45);
+    shaft.addColorStop(0, 'rgba(255,170,100,0.25)');
+    shaft.addColorStop(1, 'rgba(255,170,100,0)');
+    g.fillStyle = shaft;
+    g.fillRect(0, yT, W, H - yT);
+
+  }
+
+  /* ---------- Animated pieces ---------- */
+  function drawLights(time) {
+    for (const l of lights) {
+      if (!reduce && time < l.on) continue;
+      const fade = reduce ? 1 : Math.min(1, (time - l.on) / 250);
+      const tw = reduce ? 1 : 0.75 + 0.25 * Math.sin(time * 0.004 + l.ph);
+      const c = l.blue ? '120,170,255' : '255,190,90';
+      ctx.fillStyle = `rgba(${c},${0.25 * fade * tw})`;
+      ctx.beginPath(); ctx.arc(l.x, l.y, l.s * 3.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(255,255,255,${0.9 * fade * tw})`;
+      ctx.beginPath(); ctx.arc(l.x, l.y, l.s * 0.7, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // An aircraft on final approach: landing light growing as it descends toward the horizon
+  function drawApproach(time) {
+    const period = 26000;
+    const k = reduce ? 0.45 : ((time + 4000) % period) / period;
+    const x = ox0 + (ox1 - ox0) * (0.18 + k * 0.22);
+    const y = oy0 + (yh - oy0) * (0.38 + k * 0.58);
+    const a = Math.min(1, k * 6) * (1 - Math.max(0, (k - 0.92) / 0.08));
+    const s = 1 + k * 2.5;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, 14 * s);
+    g.addColorStop(0, `rgba(255,255,240,${0.95 * a})`);
+    g.addColorStop(0.2, `rgba(255,240,210,${0.35 * a})`);
+    g.addColorStop(1, 'rgba(255,240,210,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - 14 * s, y - 14 * s, 28 * s, 28 * s);
+    if (!reduce && Math.sin(time * 0.006) > 0.85) {
+      ctx.fillStyle = `rgba(255,60,60,${a})`;
+      ctx.beginPath(); ctx.arc(x + 6 * s, y - 2 * s, 1.4, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  function drawRays(time) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(ox0, oy0, ox1 - ox0, yT - oy0);
+    ctx.clip();
+    ctx.globalCompositeOperation = 'lighter';
+    const n = 14;
+    for (let i = 0; i < n; i++) {
+      const base = (i / n) * Math.PI * 2 + 0.2;
+      const a = base + (reduce ? 0 : Math.sin(time * 0.00012 + i) * 0.015);
+      const len = Math.max(W, H) * 1.2;
+      const w = 0.015 + (i % 3) * 0.008;
+      const g = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, len);
+      const al = 0.014 + 0.008 * Math.sin(i * 2.3 + (reduce ? 0 : time * 0.0004));
+      g.addColorStop(0, `rgba(255,170,100,${al})`);
+      g.addColorStop(1, 'rgba(255,170,100,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(sunX, sunY);
+      ctx.lineTo(sunX + Math.cos(a - w) * len, sunY + Math.sin(a - w) * len);
+      ctx.lineTo(sunX + Math.cos(a + w) * len, sunY + Math.sin(a + w) * len);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawDust(time) {
+    for (const p of dust) {
+      if (!reduce) {
+        p.x += p.vx * p.z; p.y += p.vy * p.z;
+        if (p.y < oy0) { p.y = H; p.x = Math.random() * W; }
+        if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+      }
+      const near = Math.max(0, 1 - Math.hypot(p.x - sunX, p.y - sunY) / (Math.max(W, H) * 0.7));
+      const a = (0.1 + near * 0.5) * p.z * (0.6 + 0.4 * Math.sin(time * 0.002 + p.ph));
+      ctx.fillStyle = `rgba(255,200,140,${a})`;
+      ctx.fillRect(p.x, p.y, p.z * 1.6, p.z * 1.6);
+    }
+  }
 
   function frame(now) {
-    const dt = last ? Math.min(now - last, 100) : 16;
-    last = now;
-    clock += dt;
-    phase += dt;
+    if (!t0) t0 = now;
+    const time = reduce ? 99999 : now - t0;
 
-    if (phase >= HOLD) {
-      phase -= HOLD;
-      previous = current;
-      current = (current + 1) % PLANETS.length;
-    }
+    pointer.x += (pointer.tx - pointer.x) * 0.05;
+    pointer.y += (pointer.ty - pointer.y) * 0.05;
+
+    // Slow push-in on load
+    const k = Math.min(1, time / 4500);
+    const scale = 1.07 - 0.07 * (1 - Math.pow(1 - k, 3));
+    const fade = reduce ? 1 : Math.min(1, time / 1500);
 
     ctx.clearRect(0, 0, W, H);
-    for (const s of stars) {
-      ctx.fillStyle = `rgba(255,255,255,${s.a})`;
-      ctx.fillRect(s.x, s.y, s.s, s.s);
-    }
+    ctx.save();
+    ctx.globalAlpha = fade;
+    ctx.translate(W / 2, H * 0.6);
+    ctx.scale(scale, scale);
+    ctx.translate(-W / 2, -H * 0.6);
 
-    const intro = Math.min(1, clock / 1600);
-    const t = previous >= 0 ? ease(phase / TRANS) : 1;
+    const px = pointer.x, py = pointer.y;
+    ctx.drawImage(skyLayer, -px * 10, -py * 6, W, H);
+    ctx.save(); ctx.translate(-px * 10, -py * 6);
+    drawApproach(time);
+    ctx.restore();
+    ctx.save(); ctx.translate(-px * 6, -py * 4);
+    drawLights(time);
+    ctx.restore();
+    ctx.drawImage(floorLayer, 0, 0, W, H);
+    ctx.drawImage(hangarLayer, 0, 0, W, H);
+    ctx.drawImage(jetLayer, px * 2, py * 1.5, W, H);
+    drawRays(time);
+    drawDust(time);
+    ctx.restore();
 
-    if (previous >= 0 && t < 1) {
-      // Outgoing planet drifts toward the viewer and fades
-      drawPlanet(PLANETS[previous], bufs[1], clock, reduce ? 1 : 1 + 0.1 * t, 1 - t);
-    }
-    const inScale = reduce ? 1 : (previous >= 0 ? 0.9 + 0.1 * t : 1.06 - 0.06 * ease(clock / 3000));
-    drawPlanet(PLANETS[current], bufs[0], clock, inScale, t * intro);
-
-    updateDots();
-    requestAnimationFrame(frame);
+    if (!reduce) requestAnimationFrame(frame);
   }
+
+  window.addEventListener('pointermove', e => {
+    pointer.tx = e.clientX / W - 0.5;
+    pointer.ty = e.clientY / H - 0.5;
+  });
+  window.addEventListener('pointerleave', () => { pointer.tx = 0; pointer.ty = 0; });
 
   let rt;
   window.addEventListener('resize', () => {
     clearTimeout(rt);
-    rt = setTimeout(() => { layout(); warmUp(0); }, 200);
+    rt = setTimeout(() => { layout(); if (reduce) requestAnimationFrame(frame); }, 150);
   });
 
   layout();
-  preparePlanet(PLANETS[0]);
-  warmUp(1);
   requestAnimationFrame(frame);
 })();
 </script>
