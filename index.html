@@ -14,7 +14,9 @@
   color-scheme: dark;
   --black: #000000;
   --white: #ffffff;
-  --gold: #f0a860;
+  --gold: #a8d4ff;
+  --gold-0: rgba(168,212,255,0);
+  --glow: rgba(168,212,255,0.25);
   --alert: #ff3b30;
 }
 
@@ -105,7 +107,7 @@ main {
   text-shadow: none;
   background: linear-gradient(105deg,
     transparent 0%, transparent 42%,
-    rgba(255,190,90,0.9) 46%, rgba(255,236,190,1) 49%, #fff 50%, rgba(255,236,190,1) 51%, rgba(255,190,90,0.9) 54%,
+    var(--gold) 46%, #fff 50%, var(--gold) 54%,
     transparent 58%, transparent 100%);
   background-size: 300% 100%;
   background-position: 100% 0;
@@ -126,7 +128,7 @@ main {
   top: 50%;
   height: 60%;
   transform: translateY(-50%);
-  background: radial-gradient(ellipse at center, rgba(240,150,80,0.25), transparent 70%);
+  background: radial-gradient(ellipse at center, var(--glow), transparent 70%);
   filter: blur(20px);
   z-index: -1;
   opacity: 0;
@@ -170,16 +172,16 @@ main {
 .status::before {
   transform-origin: right center;
   background:
-    linear-gradient(to left, var(--gold), rgba(240,168,96,0)) right 0 / 100% 2px no-repeat,
-    linear-gradient(to left, var(--gold), rgba(240,168,96,0)) right 4.5px / 74% 2px no-repeat,
-    linear-gradient(to left, var(--gold), rgba(240,168,96,0)) right 9px / 48% 2px no-repeat;
+    linear-gradient(to left, var(--gold), var(--gold-0)) right 0 / 100% 2px no-repeat,
+    linear-gradient(to left, var(--gold), var(--gold-0)) right 4.5px / 74% 2px no-repeat,
+    linear-gradient(to left, var(--gold), var(--gold-0)) right 9px / 48% 2px no-repeat;
 }
 .status::after {
   transform-origin: left center;
   background:
-    linear-gradient(to right, var(--gold), rgba(240,168,96,0)) left 0 / 100% 2px no-repeat,
-    linear-gradient(to right, var(--gold), rgba(240,168,96,0)) left 4.5px / 74% 2px no-repeat,
-    linear-gradient(to right, var(--gold), rgba(240,168,96,0)) left 9px / 48% 2px no-repeat;
+    linear-gradient(to right, var(--gold), var(--gold-0)) left 0 / 100% 2px no-repeat,
+    linear-gradient(to right, var(--gold), var(--gold-0)) left 4.5px / 74% 2px no-repeat,
+    linear-gradient(to right, var(--gold), var(--gold-0)) left 9px / 48% 2px no-repeat;
 }
 @keyframes stripes { to { transform: skewX(-32deg) scaleX(1); } }
 
@@ -251,7 +253,7 @@ main {
   /* ---------- Layout ---------- */
   let W, H, dpr, yh, yT, ox0, ox1, oy0, sunX, sunY, sunR;
   let jet = { s: 1, gx: 0, gy: 0 };
-  let skyLayer, hangarLayer, jetLayer, floorLayer;
+  let skyWarm, skyCool, hangarWarm, hangarCool, jetWarm, jetCool, floorWarm, floorCool, ridgeClip, starsSky = [];
   let lights = [], dust = [];
   let t0 = 0;
   const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
@@ -298,10 +300,28 @@ main {
     sunX = tipRoom > sunR * 4 ? W / 2 + pw / 2 + tipRoom * 0.5 : W / 2 + pw * 0.3;
     sunY = yh + sunR * 0.25;
 
-    buildSky();
-    buildHangar();
-    buildJet();
-    buildFloor();
+    buildSkyWarm(); buildSkyCool();
+    buildHangarWarm(); buildHangarCool();
+    buildJetWarm(); buildJetCool();
+    buildFloorWarm(); buildFloorCool();
+
+    // Sky above the distant ridge: the sun is clipped to it so it sets behind the hills
+    const Mr = Math.min(W, H);
+    ridgeClip = new Path2D();
+    ridgeClip.moveTo(-40, -40);
+    ridgeClip.lineTo(-40, yh);
+    for (let x = 0; x <= W; x += 8) {
+      const h = 6 + 10 * Math.sin(x * 0.004) + 6 * Math.sin(x * 0.013 + 1) + 3 * Math.sin(x * 0.05);
+      ridgeClip.lineTo(x, yh - Math.max(2, h * (Mr / 900)));
+    }
+    ridgeClip.lineTo(W + 40, yh);
+    ridgeClip.lineTo(W + 40, -40);
+    ridgeClip.closePath();
+
+    const sr = rng(99);
+    starsSky = Array.from({ length: Math.round(W * (yh - oy0) / 2500) }, () => ({
+      x: ox0 + sr() * (ox1 - ox0), y: oy0 + sr() * (yh - oy0) * 0.85, s: sr() < 0.07 ? 1.5 : sr() + 0.3, a: 0.3 + sr() * 0.7
+    }));
 
     // Taxiway lights on the apron, two rows receding
     lights = [];
@@ -325,9 +345,44 @@ main {
   }
 
   /* Sky: sunset glow at the horizon fading to black overhead */
-  function buildSky() {
+
+  /* Hangar: black walls around the open door, roof truss silhouetted against the sky */
+
+  function textTop0() { return document.querySelector('.title').getBoundingClientRect().top || H * 0.3; }
+
+  function planeTransform(g, mirror, dx = 0, dy = 0) {
+    g.translate(jet.gx + dx, jet.gy + dy);
+    if (mirror) g.scale(1, -1);
+    g.scale(jet.s, jet.s);
+    g.translate(0, -300);
+  }
+
+  function planeOutline(g) {
+    g.fill(PLANE);
+    g.beginPath(); g.ellipse(BODY.x, BODY.y, BODY.rx, BODY.ry, 0, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(COWL.x, COWL.y, COWL.r, 0, Math.PI * 2); g.fill();
+    for (const [x, y, w, h] of TIRES) {
+      g.beginPath();
+      g.roundRect ? g.roundRect(x, y, w, h, w / 2) : g.rect(x, y, w, h);
+      g.fill();
+    }
+  }
+
+  function drawJetShape(g, mirror) {
+    g.save();
+    planeTransform(g, mirror);
+    planeOutline(g);
+    g.restore();
+  }
+
+
+  // Propeller: translucent disc with a spinning two-blade blur
+
+  /* Polished hangar floor reflecting the door, the sunset and the jet */
+
+  function buildSkyWarm() {
     const [c, g] = layer();
-    skyLayer = c;
+    skyWarm = c;
     const sky = g.createLinearGradient(0, oy0, 0, yh);
     sky.addColorStop(0, '#000000');
     sky.addColorStop(0.3, '#0b0712');
@@ -364,19 +419,6 @@ main {
       g.ellipse(cx, cy, cw / 2, ch, 0, 0, Math.PI * 2);
       g.fill();
     }
-
-    // Sun disc, half set
-    g.save();
-    g.beginPath();
-    g.rect(0, 0, W, yh);
-    g.clip();
-    g.fillStyle = '#fff4dc';
-    g.shadowColor = 'rgba(255,200,120,1)';
-    g.shadowBlur = sunR * 1.5;
-    g.beginPath();
-    g.arc(sunX, sunY, sunR, 0, Math.PI * 2);
-    g.fill();
-    g.restore();
 
     // Distant ridge, control tower and hangars on the horizon
     g.fillStyle = '#0a0608';
@@ -426,11 +468,96 @@ main {
     g.fillStyle = st;
     g.fillRect(sunX - W * 0.08, yh, W * 0.16, (yT - yh) * 0.8);
   }
-
-  /* Hangar: black walls around the open door, roof truss silhouetted against the sky */
-  function buildHangar() {
+  function buildSkyCool() {
     const [c, g] = layer();
-    hangarLayer = c;
+    skyCool = c;
+    const sky = g.createLinearGradient(0, oy0, 0, yh);
+    sky.addColorStop(0, '#000000');
+    sky.addColorStop(0.18, '#020a1c');
+    sky.addColorStop(0.42, '#0d2f66');
+    sky.addColorStop(0.68, '#2565b4');
+    sky.addColorStop(0.88, '#5f9fdc');
+    sky.addColorStop(1, '#b6d8f2');
+    g.fillStyle = sky;
+    g.fillRect(0, 0, W, yh);
+
+    // Fair-weather cumulus near the horizon, lit from the upper right, softened with a blur
+    const [cc, cg] = layer();
+    const r = rng(33);
+    const M = Math.min(W, H);
+    for (let i = 0; i < 8; i++) {
+      const cx = ox0 + r() * (ox1 - ox0);
+      const base = yh - (0.05 + r() * 0.2) * (yh - oy0);
+      const size = M * (0.022 + r() * 0.035) * (1 - (yh - base) / (yh - oy0) * 0.6);
+      const puffs = 10 + Math.floor(r() * 8);
+      for (let k = 0; k < puffs; k++) {
+        const spread = (r() - 0.5) * size * 6;
+        const px = cx + spread;
+        const lift = (1 - Math.abs(spread) / (size * 3)) * size * 1.4;
+        const py = base - r() * lift;
+        const pr = size * (0.5 + r() * 0.7);
+        const pg = cg.createRadialGradient(px + pr * 0.35, py - pr * 0.45, pr * 0.05, px, py, pr);
+        pg.addColorStop(0, 'rgba(255,255,255,0.95)');
+        pg.addColorStop(0.6, 'rgba(232,240,250,0.85)');
+        pg.addColorStop(1, 'rgba(170,198,230,0)');
+        cg.fillStyle = pg;
+        cg.beginPath(); cg.arc(px, py, pr, 0, Math.PI * 2); cg.fill();
+      }
+    }
+    // Flatten the bases: fade out anything that hangs below each cloud line
+    g.save();
+    g.filter = `blur(${Math.max(1.5, M * 0.003)}px)`;
+    g.drawImage(cc, 0, 0, W, H);
+    g.restore();
+
+    // Distant ridge, control tower and hangars in the haze
+    g.fillStyle = '#2b3c48';
+    g.beginPath();
+    g.moveTo(0, yh);
+    for (let x = 0; x <= W; x += 8) {
+      const h = 6 + 10 * Math.sin(x * 0.004) + 6 * Math.sin(x * 0.013 + 1) + 3 * Math.sin(x * 0.05);
+      g.lineTo(x, yh - Math.max(2, h * (M / 900)));
+    }
+    g.lineTo(W, yh);
+    g.closePath();
+    g.fill();
+
+    const k = M / 900;
+    const tx = W * 0.24;
+    g.fillStyle = '#1d2a34';
+    g.fillRect(tx - 4 * k, yh - 70 * k, 8 * k, 70 * k);
+    g.beginPath();
+    g.moveTo(tx - 16 * k, yh - 70 * k);
+    g.lineTo(tx + 16 * k, yh - 70 * k);
+    g.lineTo(tx + 12 * k, yh - 86 * k);
+    g.lineTo(tx - 12 * k, yh - 86 * k);
+    g.closePath();
+    g.fill();
+    g.fillRect(tx - 1, yh - 98 * k, 2, 12 * k);
+    g.fillStyle = 'rgba(190,225,255,0.7)';
+    g.fillRect(tx - 11 * k, yh - 83 * k, 22 * k, 6 * k);
+    g.fillStyle = '#26343f';
+    for (const [hx, hw, hh] of [[0.36, 60, 16], [0.44, 40, 12], [0.62, 80, 18]]) {
+      g.fillRect(W * hx, yh - hh * k, hw * k, hh * k);
+    }
+
+    // Dry concrete apron picking up the sky
+    const ap = g.createLinearGradient(0, yh, 0, yT);
+    ap.addColorStop(0, '#9fb3c4');
+    ap.addColorStop(0.4, '#5d6c79');
+    ap.addColorStop(1, '#1a1f25');
+    g.fillStyle = ap;
+    g.fillRect(0, yh, W, yT - yh);
+    g.strokeStyle = 'rgba(255,214,90,0.5)';
+    g.lineWidth = Math.max(1, M * 0.002);
+    g.beginPath();
+    g.moveTo(ox0, yh + (yT - yh) * 0.35);
+    g.lineTo(ox1, yh + (yT - yh) * 0.35);
+    g.stroke();
+  }
+  function buildHangarWarm() {
+    const [c, g] = layer();
+    hangarWarm = c;
     g.fillStyle = '#030303';
     g.fillRect(0, 0, W, yT);
     g.globalCompositeOperation = 'destination-out';
@@ -496,37 +623,77 @@ main {
       g.fill();
     }
   }
+  function buildHangarCool() {
+    const [c, g] = layer();
+    hangarCool = c;
+    g.fillStyle = '#030303';
+    g.fillRect(0, 0, W, yT);
+    g.globalCompositeOperation = 'destination-out';
+    g.fillRect(ox0, oy0, ox1 - ox0, yT - oy0);
+    g.globalCompositeOperation = 'source-over';
 
-  function textTop0() { return document.querySelector('.title').getBoundingClientRect().top || H * 0.3; }
+    // Corrugated door panels pushed to the sides, catching faint warm spill
+    for (const [a, b] of [[0, ox0], [ox1, W]]) {
+      for (let x = a + 6; x < b; x += 7) {
+        const near = 1 - Math.min(1, Math.abs(x - (a === 0 ? ox0 : ox1)) / (W * 0.1));
+        g.fillStyle = `rgba(200,220,245,${0.05 + near * 0.08})`;
+        g.fillRect(x, oy0, 1, yT - oy0);
+      }
+    }
 
-  function planeTransform(g, mirror, dx = 0, dy = 0) {
-    g.translate(jet.gx + dx, jet.gy + dy);
-    if (mirror) g.scale(1, -1);
-    g.scale(jet.s, jet.s);
-    g.translate(0, -300);
-  }
+    // Rim light on the door jambs
+    for (const x of [ox0, ox1]) {
+      const rim = g.createLinearGradient(0, oy0, 0, yT);
+      rim.addColorStop(0, 'rgba(215,232,255,0)');
+      rim.addColorStop(1, 'rgba(215,232,255,0.7)');
+      g.fillStyle = rim;
+      g.fillRect(x - 1, oy0, 2, yT - oy0);
+    }
 
-  function planeOutline(g) {
-    g.fill(PLANE);
-    g.beginPath(); g.ellipse(BODY.x, BODY.y, BODY.rx, BODY.ry, 0, 0, Math.PI * 2); g.fill();
-    g.beginPath(); g.arc(COWL.x, COWL.y, COWL.r, 0, Math.PI * 2); g.fill();
-    for (const [x, y, w, h] of TIRES) {
+    // Roof truss
+    const tb = Math.min(H * 0.07, (textTop0() - oy0) * 0.45);
+    g.fillStyle = '#030303';
+    g.fillRect(ox0, oy0, ox1 - ox0, H * 0.012);
+    g.fillRect(ox0, oy0 + tb, ox1 - ox0, H * 0.008);
+    g.strokeStyle = '#030303';
+    g.lineWidth = Math.max(2, H * 0.004);
+    const bay = Math.max(40, W * 0.045);
+    g.beginPath();
+    for (let x = ox0, up = true; x < ox1; x += bay, up = !up) {
+      g.moveTo(x, up ? oy0 : oy0 + tb);
+      g.lineTo(Math.min(ox1, x + bay), up ? oy0 + tb : oy0);
+      g.moveTo(x, oy0);
+      g.lineTo(x, oy0 + tb);
+    }
+    g.stroke();
+
+    // Pendant lamps hanging from the truss
+    const M = Math.min(W, H);
+    for (const fx of [0.3, 0.5, 0.7]) {
+      const lx = W * fx, ly = oy0 + tb + H * 0.02;
+      g.strokeStyle = '#030303';
+      g.lineWidth = 1.5;
+      g.beginPath(); g.moveTo(lx, oy0 + tb); g.lineTo(lx, ly); g.stroke();
+      g.fillStyle = '#030303';
       g.beginPath();
-      g.roundRect ? g.roundRect(x, y, w, h, w / 2) : g.rect(x, y, w, h);
+      g.moveTo(lx - M * 0.018, ly + M * 0.014);
+      g.lineTo(lx + M * 0.018, ly + M * 0.014);
+      g.lineTo(lx + M * 0.006, ly);
+      g.lineTo(lx - M * 0.006, ly);
+      g.closePath();
+      g.fill();
+      const cone = g.createRadialGradient(lx, ly + M * 0.016, 0, lx, ly + M * 0.016, M * 0.045);
+      cone.addColorStop(0, 'rgba(235,242,255,0.4)');
+      cone.addColorStop(1, 'rgba(235,242,255,0)');
+      g.fillStyle = cone;
+      g.beginPath();
+      g.arc(lx, ly + M * 0.016, M * 0.045, 0, Math.PI * 2);
       g.fill();
     }
   }
-
-  function drawJetShape(g, mirror) {
-    g.save();
-    planeTransform(g, mirror);
-    planeOutline(g);
-    g.restore();
-  }
-
-  function buildJet() {
+  function buildJetWarm() {
     const [c, g] = layer();
-    jetLayer = c;
+    jetWarm = c;
     g.fillStyle = '#060506';
     drawJetShape(g, false);
 
@@ -572,44 +739,57 @@ main {
     }
     g.restore();
   }
-
-  // Propeller: translucent disc with a spinning two-blade blur
-  function drawProp(time, dx, dy) {
-    ctx.save();
-    planeTransform(ctx, false, dx, dy);
-    const { x, y, r } = PROP;
-    const disc = ctx.createRadialGradient(x, y, COWL.r * 0.6, x, y, r);
-    disc.addColorStop(0, 'rgba(255,190,130,0)');
-    disc.addColorStop(0.85, 'rgba(255,190,130,0.08)');
-    disc.addColorStop(1, 'rgba(255,200,140,0.22)');
-    ctx.fillStyle = disc;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-
-    const a = reduce ? 0.5 : time * 0.035;
-    ctx.lineCap = 'round';
-    for (let k = 0; k < 3; k++) {
-      // Trailing ghosts sell the motion blur
-      const ang = a - k * 0.12;
-      ctx.strokeStyle = `rgba(6,5,6,${0.5 - k * 0.15})`;
-      ctx.lineWidth = 12 - k * 3;
-      ctx.beginPath();
-      ctx.moveTo(x - Math.cos(ang) * r * 0.97, y - Math.sin(ang) * r * 0.97);
-      ctx.lineTo(x + Math.cos(ang) * r * 0.97, y + Math.sin(ang) * r * 0.97);
-      ctx.stroke();
-    }
-    // Spinner
-    ctx.fillStyle = '#0b0a0b';
-    ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,170,110,0.5)';
-    ctx.lineWidth = 1.2 / jet.s;
-    ctx.beginPath(); ctx.arc(x, y, 11, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
-    ctx.restore();
-  }
-
-  /* Polished hangar floor reflecting the door, the sunset and the jet */
-  function buildFloor() {
+  function buildJetCool() {
     const [c, g] = layer();
-    floorLayer = c;
+    jetCool = c;
+    g.fillStyle = '#060506';
+    drawJetShape(g, false);
+
+    g.save();
+    planeTransform(g, false);
+
+    // Warm rim light where the sunset wraps around the top edges
+    g.strokeStyle = 'rgba(215,232,255,0.55)';
+    g.lineWidth = 1.4 / jet.s;
+    g.save();
+    g.beginPath(); g.rect(0, 0, 1000, 172); g.clip();
+    g.stroke(PLANE);
+    g.beginPath(); g.arc(COWL.x, COWL.y, COWL.r, Math.PI * 1.05, Math.PI * 1.95); g.stroke();
+    g.restore();
+
+    // Canopy glass glowing with the sky behind it, with frame and pilot
+    const glass = g.createLinearGradient(0, 104, 0, 140);
+    glass.addColorStop(0, 'rgba(170,210,250,0.55)');
+    glass.addColorStop(1, 'rgba(200,220,245,0.15)');
+    g.fillStyle = glass;
+    g.fill(CANOPY);
+    g.fillStyle = '#060506';
+    g.beginPath(); g.ellipse(500, 128, 10, 12, 0, 0, Math.PI * 2); g.fill();
+    g.fillRect(488, 134, 24, 8);
+    g.strokeStyle = '#060506';
+    g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(480, 108); g.lineTo(482, 140);
+    g.moveTo(520, 108); g.lineTo(518, 140);
+    g.stroke();
+
+    // Cowling: cooling gills ring and the engine face
+    g.strokeStyle = 'rgba(215,232,255,0.18)';
+    g.lineWidth = 1.5;
+    g.beginPath(); g.arc(COWL.x, COWL.y, COWL.r * 0.78, 0, Math.PI * 2); g.stroke();
+
+    // Landing lights in the wing leading edges
+    g.shadowColor = 'rgba(255,220,170,1)';
+    g.shadowBlur = 14 / jet.s;
+    g.fillStyle = 'rgba(255,236,200,0.95)';
+    for (const x of [262, 738]) {
+      g.beginPath(); g.ellipse(x, 189, 9, 5, 0, 0, Math.PI * 2); g.fill();
+    }
+    g.restore();
+  }
+  function buildFloorWarm() {
+    const [c, g] = layer();
+    floorWarm = c;
     g.fillStyle = '#050405';
     g.fillRect(0, yT, W, H - yT);
 
@@ -621,7 +801,7 @@ main {
     rg.clip();
     rg.translate(0, yT * 2);
     rg.scale(1, -1);
-    rg.drawImage(skyLayer, 0, 0, W, H);
+    rg.drawImage(skyWarm, 0, 0, W, H);
     rg.restore();
     rg.globalCompositeOperation = 'destination-in';
     const fv = rg.createLinearGradient(0, yT, 0, yT + (H - yT) * 0.7);
@@ -662,7 +842,61 @@ main {
     g.fillRect(0, yT, W, H - yT);
 
   }
+  function buildFloorCool() {
+    const [c, g] = layer();
+    floorCool = c;
+    g.fillStyle = '#050405';
+    g.fillRect(0, yT, W, H - yT);
 
+    // Mirror the door view onto the floor, then fade it out with depth and toward the sides
+    const [rc, rg] = layer();
+    rg.save();
+    rg.beginPath();
+    rg.rect(ox0, yT, ox1 - ox0, H - yT);
+    rg.clip();
+    rg.translate(0, yT * 2);
+    rg.scale(1, -1);
+    rg.drawImage(skyCool, 0, 0, W, H);
+    rg.restore();
+    rg.globalCompositeOperation = 'destination-in';
+    const fv = rg.createLinearGradient(0, yT, 0, yT + (H - yT) * 0.7);
+    fv.addColorStop(0, 'rgba(0,0,0,0.45)');
+    fv.addColorStop(1, 'rgba(0,0,0,0)');
+    rg.fillStyle = fv;
+    rg.fillRect(0, yT, W, H - yT);
+    const fh = rg.createLinearGradient(ox0, 0, ox1, 0);
+    fh.addColorStop(0, 'rgba(0,0,0,0)');
+    fh.addColorStop(0.12, 'rgba(0,0,0,1)');
+    fh.addColorStop(0.88, 'rgba(0,0,0,1)');
+    fh.addColorStop(1, 'rgba(0,0,0,0)');
+    rg.fillStyle = fh;
+    rg.fillRect(0, yT, W, H - yT);
+    g.save();
+    g.filter = 'blur(3px)';
+    g.drawImage(rc, 0, 0, W, H);
+    g.restore();
+
+    g.save();
+    g.globalAlpha = 0.5;
+    g.fillStyle = '#000';
+    drawJetShape(g, true);
+    g.restore();
+
+    // Light spilling in from the door toward the viewer
+    const spill = g.createLinearGradient(0, yT, 0, H);
+    spill.addColorStop(0, 'rgba(0,0,0,0)');
+    spill.addColorStop(0.6, 'rgba(0,0,0,0.75)');
+    spill.addColorStop(1, 'rgba(0,0,0,0.95)');
+    g.fillStyle = spill;
+    g.fillRect(0, yT, W, H - yT);
+
+    const shaft = g.createRadialGradient(sunX, yT, 0, sunX, yT, H * 0.45);
+    shaft.addColorStop(0, 'rgba(225,238,255,0.25)');
+    shaft.addColorStop(1, 'rgba(225,238,255,0)');
+    g.fillStyle = shaft;
+    g.fillRect(0, yT, W, H - yT);
+
+  }
   /* ---------- Animated pieces ---------- */
   function drawLights(time) {
     for (const l of lights) {
@@ -697,7 +931,101 @@ main {
     }
   }
 
-  function drawRays(time) {
+
+
+
+
+  /* ---------- A fast-forwarded day ----------
+     One cycle = 10 s: about five seconds of blue daylight with the sun crossing the sky,
+     then it drops into a warm sunset, dusk falls for a moment, and morning comes back. */
+  const CYCLE = 10000;
+  const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const lerpC = (a, b, t) => a.map((v, i) => Math.round(lerp(v, b[i], t)));
+  const WARM = { rim: [255, 160, 90], dust: [255, 200, 140], ray: [255, 170, 100], accent: [240, 168, 96] };
+  const COOL = { rim: [215, 232, 255], dust: [235, 242, 255], ray: [235, 245, 255], accent: [168, 212, 255] };
+
+  function sky(p) {
+    const warmth = sm(0.3, 0.55, p) * (1 - sm(0.9, 1, p));          // 0 = day, 1 = sunset
+    const night = sm(0.76, 0.86, p) * (1 - sm(0.92, 0.99, p));       // brief dusk between days
+    let x, y, vis;
+    const startX = ox0 + (ox1 - ox0) * 0.16;
+    const peakY = Math.max(oy0 + (yh - oy0) * 0.45, textBottom0() + sunR * 2.2);
+    if (p < 0.55) {
+      const s = p / 0.55;
+      x = lerp(startX, sunX, s);
+      y = lerp(peakY, sunY, 1 - Math.cos(s * Math.PI / 2));
+      vis = 1;
+    } else if (p < 0.85) {
+      const s = (p - 0.55) / 0.3;
+      x = sunX;
+      y = sunY + s * sunR * 2.6;
+      vis = 1 - sm(0.7, 1, s);
+    } else {
+      x = startX; y = peakY;
+      vis = sm(0.95, 1, p);
+    }
+    return { warmth, night, x, y, vis };
+  }
+
+  function textBottom0() { return document.querySelector('.status').getBoundingClientRect().bottom || H * 0.48; }
+
+  function drawSun(st, ox, oy) {
+    ctx.save();
+    ctx.translate(ox, oy);
+    ctx.clip(ridgeClip);
+    const w = st.warmth;
+    const R0 = Math.max(W, H) * lerp(0.5, 0.35, w);
+    const g = ctx.createRadialGradient(st.x, st.y, 0, st.x, st.y, R0);
+    const core = lerpC([255, 255, 250], [255, 214, 150], w);
+    const mid = lerpC([180, 215, 255], [230, 100, 50], w);
+    g.addColorStop(0, `rgba(${core},${0.9 * st.vis})`);
+    g.addColorStop(0.05, `rgba(${core},${0.5 * st.vis})`);
+    g.addColorStop(0.22, `rgba(${mid},${0.16 * st.vis * (1 - w * 0.5)})`);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, yh);
+    ctx.fillStyle = `rgba(${lerpC([255, 255, 255], [255, 244, 220], w)},${st.vis})`;
+    ctx.shadowColor = `rgba(${core},1)`;
+    ctx.shadowBlur = sunR * 1.8;
+    ctx.beginPath(); ctx.arc(st.x, st.y, sunR * lerp(0.8, 1, w), 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawProp(time, dx, dy, w) {
+    ctx.save();
+    planeTransform(ctx, false, dx, dy);
+    const { x, y, r } = PROP;
+    const c = lerpC([170, 210, 250], [255, 195, 135], w);
+    const disc = ctx.createRadialGradient(x, y, COWL.r * 0.6, x, y, r);
+    disc.addColorStop(0, `rgba(${c},0)`);
+    disc.addColorStop(0.85, `rgba(${c},0.08)`);
+    disc.addColorStop(1, `rgba(${c},0.22)`);
+    ctx.fillStyle = disc;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    const a = reduce ? 0.5 : time * 0.035;
+    ctx.lineCap = 'round';
+    for (let k = 0; k < 3; k++) {
+      const ang = a - k * 0.12;
+      ctx.strokeStyle = `rgba(6,5,6,${0.5 - k * 0.15})`;
+      ctx.lineWidth = 12 - k * 3;
+      ctx.beginPath();
+      ctx.moveTo(x - Math.cos(ang) * r * 0.97, y - Math.sin(ang) * r * 0.97);
+      ctx.lineTo(x + Math.cos(ang) * r * 0.97, y + Math.sin(ang) * r * 0.97);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#0b0a0b';
+    ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = `rgba(${c},0.5)`;
+    ctx.lineWidth = 1.2 / jet.s;
+    ctx.beginPath(); ctx.arc(x, y, 11, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawRays(time, st) {
+    const strength = st.vis * (1 - st.night);
+    if (strength < 0.02) return;
+    const c = lerpC(COOL.ray, WARM.ray, st.warmth);
     ctx.save();
     ctx.beginPath();
     ctx.rect(ox0, oy0, ox1 - ox0, yT - oy0);
@@ -705,47 +1033,64 @@ main {
     ctx.globalCompositeOperation = 'lighter';
     const n = 14;
     for (let i = 0; i < n; i++) {
-      const base = (i / n) * Math.PI * 2 + 0.2;
-      const a = base + (reduce ? 0 : Math.sin(time * 0.00012 + i) * 0.015);
+      const a = (i / n) * Math.PI * 2 + 0.2 + (reduce ? 0 : Math.sin(time * 0.00012 + i) * 0.015);
       const len = Math.max(W, H) * 1.2;
-      const w = 0.015 + (i % 3) * 0.008;
-      const g = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, len);
-      const al = 0.014 + 0.008 * Math.sin(i * 2.3 + (reduce ? 0 : time * 0.0004));
-      g.addColorStop(0, `rgba(255,170,100,${al})`);
-      g.addColorStop(1, 'rgba(255,170,100,0)');
+      const wd = 0.015 + (i % 3) * 0.008;
+      const g = ctx.createRadialGradient(st.x, st.y, 0, st.x, st.y, len);
+      const al = (0.01 + 0.006 * Math.sin(i * 2.3 + (reduce ? 0 : time * 0.0004))) * strength * (1 + st.warmth * 0.4);
+      g.addColorStop(0, `rgba(${c},${al})`);
+      g.addColorStop(1, `rgba(${c},0)`);
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.moveTo(sunX, sunY);
-      ctx.lineTo(sunX + Math.cos(a - w) * len, sunY + Math.sin(a - w) * len);
-      ctx.lineTo(sunX + Math.cos(a + w) * len, sunY + Math.sin(a + w) * len);
+      ctx.moveTo(st.x, st.y);
+      ctx.lineTo(st.x + Math.cos(a - wd) * len, st.y + Math.sin(a - wd) * len);
+      ctx.lineTo(st.x + Math.cos(a + wd) * len, st.y + Math.sin(a + wd) * len);
       ctx.closePath();
       ctx.fill();
     }
     ctx.restore();
   }
 
-  function drawDust(time) {
+  function drawDust(time, st) {
+    const c = lerpC(COOL.dust, WARM.dust, st.warmth);
     for (const p of dust) {
       if (!reduce) {
         p.x += p.vx * p.z; p.y += p.vy * p.z;
         if (p.y < oy0) { p.y = H; p.x = Math.random() * W; }
         if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
       }
-      const near = Math.max(0, 1 - Math.hypot(p.x - sunX, p.y - sunY) / (Math.max(W, H) * 0.7));
-      const a = (0.1 + near * 0.5) * p.z * (0.6 + 0.4 * Math.sin(time * 0.002 + p.ph));
-      ctx.fillStyle = `rgba(255,200,140,${a})`;
+      const near = Math.max(0, 1 - Math.hypot(p.x - st.x, p.y - st.y) / (Math.max(W, H) * 0.7));
+      const a = (0.1 + near * 0.5 * st.vis) * p.z * (0.6 + 0.4 * Math.sin(time * 0.002 + p.ph)) * (1 - st.night * 0.7);
+      ctx.fillStyle = `rgba(${c},${a})`;
       ctx.fillRect(p.x, p.y, p.z * 1.6, p.z * 1.6);
     }
+  }
+
+  const rootStyle = document.documentElement.style;
+  let lastAccent = '';
+  function setAccent(w) {
+    const c = lerpC(COOL.accent, WARM.accent, w);
+    const key = c.join(',');
+    if (key === lastAccent) return;
+    lastAccent = key;
+    rootStyle.setProperty('--gold', `rgb(${key})`);
+    rootStyle.setProperty('--gold-0', `rgba(${key},0)`);
+    rootStyle.setProperty('--glow', `rgba(${key},0.25)`);
+  }
+
+  function layerMix(cool, warm, w, dx = 0, dy = 0) {
+    if (w < 0.995) ctx.drawImage(cool, dx, dy, W, H);
+    if (w > 0.005) { ctx.globalAlpha = w; ctx.drawImage(warm, dx, dy, W, H); ctx.globalAlpha = 1; }
   }
 
   function frame(now) {
     if (!t0) t0 = now;
     const time = reduce ? 99999 : now - t0;
+    const p = reduce ? 0.2 : ((time + 1200) % CYCLE) / CYCLE;
+    const st = sky(p);
 
     pointer.x += (pointer.tx - pointer.x) * 0.05;
     pointer.y += (pointer.ty - pointer.y) * 0.05;
-
-    // Slow push-in on load
     const k = Math.min(1, time / 4500);
     const scale = 1.07 - 0.07 * (1 - Math.pow(1 - k, 3));
     const fade = reduce ? 1 : Math.min(1, time / 1500);
@@ -756,23 +1101,40 @@ main {
     ctx.translate(W / 2, H * 0.6);
     ctx.scale(scale, scale);
     ctx.translate(-W / 2, -H * 0.6);
+    const base = ctx.globalAlpha;
 
     const px = pointer.x, py = pointer.y;
-    ctx.drawImage(skyLayer, -px * 10, -py * 6, W, H);
-    ctx.save(); ctx.translate(-px * 10, -py * 6);
+    const sx = -px * 10, sy = -py * 6;
+
+    // Sky: blue day and warm sunset blended, the moving sun, then dusk on top
+    layerMix(skyCool, skyWarm, st.warmth, sx, sy);
+    drawSun(st, sx, sy);
+    if (st.night > 0.01) {
+      ctx.fillStyle = `rgba(2,4,12,${st.night * 0.82})`;
+      ctx.fillRect(0, 0, W, yT);
+      for (const s of starsSky) {
+        ctx.fillStyle = `rgba(255,255,255,${s.a * st.night})`;
+        ctx.fillRect(s.x + sx, s.y + sy, s.s, s.s);
+      }
+    }
+
+    ctx.save(); ctx.translate(sx, sy);
     drawApproach(time);
     ctx.restore();
     ctx.save(); ctx.translate(-px * 6, -py * 4);
     drawLights(time);
     ctx.restore();
-    ctx.drawImage(floorLayer, 0, 0, W, H);
-    ctx.drawImage(hangarLayer, 0, 0, W, H);
-    ctx.drawImage(jetLayer, px * 2, py * 1.5, W, H);
-    drawProp(time, px * 2, py * 1.5);
-    drawRays(time);
-    drawDust(time);
+
+    layerMix(floorCool, floorWarm, st.warmth);
+    if (st.night > 0.01) { ctx.fillStyle = `rgba(2,3,8,${st.night * 0.6})`; ctx.fillRect(0, yT, W, H - yT); }
+    layerMix(hangarCool, hangarWarm, st.warmth);
+    layerMix(jetCool, jetWarm, st.warmth, px * 2, py * 1.5);
+    drawProp(time, px * 2, py * 1.5, st.warmth);
+    drawRays(time, st);
+    drawDust(time, st);
     ctx.restore();
 
+    setAccent(st.warmth);
     if (!reduce) requestAnimationFrame(frame);
   }
 
