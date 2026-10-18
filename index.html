@@ -179,16 +179,48 @@ main {
 @keyframes fade   { to { opacity: 1; } }
 @keyframes blink  { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 
+
+/* Carousel progress: one segment per planet, the active one fills over 3 s */
+.dots {
+  position: fixed;
+  left: 50%;
+  bottom: calc(clamp(24px, 5vh, 44px) + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 3;
+  opacity: 0;
+  animation: fade 1.2s 3.4s ease forwards;
+  pointer-events: none;
+}
+.dots i {
+  position: relative;
+  display: block;
+  width: clamp(18px, 3.4vw, 34px);
+  height: 2px;
+  background: rgba(255,255,255,0.22);
+  overflow: hidden;
+}
+.dots i b {
+  position: absolute;
+  inset: 0;
+  width: 0;
+  background: var(--gold);
+  box-shadow: 0 0 6px rgba(217,183,124,0.8);
+}
+.dots i.done b { width: 100%; background: rgba(255,255,255,0.6); box-shadow: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .title span { animation: none; opacity: 1; transform: none; filter: none; }
   .title::after, .title::before { animation: none; opacity: 0; }
   .status { animation: none; opacity: 1; }
   .dot { animation: none; opacity: 1; }
+  .dots { animation: none; opacity: 1; }
 }
 </style>
 </head>
 <body>
-<canvas id="saturn" aria-hidden="true"></canvas>
+<canvas id="space" aria-hidden="true"></canvas>
 <div class="veil" aria-hidden="true"></div>
 
 <main>
@@ -199,12 +231,19 @@ main {
   </div>
 </main>
 
+<div class="dots" id="dots" aria-hidden="true"><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i></div>
+
 <script>
 (() => {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const canvas = document.getElementById('saturn');
+  const canvas = document.getElementById('space');
   const ctx = canvas.getContext('2d');
+  const segs = [...document.querySelectorAll('#dots i')];
 
+  const HOLD = 3000;      // each planet stays 3 s
+  const TRANS = 900;      // crossfade length
+
+  /* ---------- Noise helpers ---------- */
   function rng(seed) {
     return () => {
       seed = (seed * 16807) % 2147483647;
@@ -212,252 +251,414 @@ main {
     };
   }
   const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
-  // 1D noise (ring structure, band palette)
-  const r1 = rng(9);
-  const N1 = Array.from({ length: 512 }, r1);
+  const N1 = Array.from({ length: 512 }, rng(9));
   function n1(x) {
     const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f);
     const a = N1[((i % 512) + 512) % 512], b = N1[(((i + 1) % 512) + 512) % 512];
     return a + (b - a) * u;
   }
 
-  // Tileable 2D value noise (cloud turbulence)
-  const r2 = rng(1971);
   const G = 256;
-  const lat2 = Array.from({ length: G * G }, r2);
+  const L2 = Array.from({ length: G * G }, rng(1971));
   function vn(x, y, px, py) {
     const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
     const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
-    const at = (a, b) => lat2[((((b % py) + py) % py) % G) * G + ((((a % px) + px) % px) % G)];
+    const at = (a, b) => L2[((((b % py) + py) % py) % G) * G + ((((a % px) + px) % px) % G)];
     const A = at(xi, yi), B = at(xi + 1, yi), C = at(xi, yi + 1), D = at(xi + 1, yi + 1);
     return A + (B - A) * u + (C - A) * v + (A - B - C + D) * u * v;
   }
-  function fbm(u, v, oct) {
+  // Tileable in longitude (u), seeded by an offset
+  function fbm(u, v, oct, off = 0) {
     let s = 0, a = 0.5, f = 1;
     for (let o = 0; o < oct; o++) {
       const px = 6 * f, py = 3 * f;
-      s += a * vn(u * px, v * py, px, py);
+      s += a * vn(u * px + off * 17, v * py + off * 31, px, py + 64);
       a *= 0.5; f *= 2;
     }
     return s;
   }
 
-  /* ---------- Geometry (planet radius = 1) ---------- */
-  const ELEV = 0.33;
-  const ROLL = -0.32;
-  const N = [0, Math.cos(ELEV), Math.sin(ELEV)];
-  const E1 = [1, 0, 0];
-  const E2 = [0, Math.sin(ELEV), -Math.cos(ELEV)];
-  const OBL = 0.91;
-  const L = (() => { const v = [0.95, 0.32, 0.12]; const l = Math.hypot(...v); return v.map(c => c / l); })();
-  const LN = L[0] * N[0] + L[1] * N[1] + L[2] * N[2];
+  /* ---------- Planet surface textures (equirectangular) ---------- */
+  const TW = 512, TH = 256;
 
-  const RINGS = [
+  function makeTex(fn) {
+    const t = new Uint8ClampedArray(TW * TH * 3);
+    for (let y = 0; y < TH; y++) {
+      const v = y / TH;
+      const lat = (0.5 - v) * Math.PI;
+      for (let x = 0; x < TW; x++) {
+        const c = fn(x / TW, v, lat);
+        const j = (y * TW + x) * 3;
+        t[j] = c[0]; t[j + 1] = c[1]; t[j + 2] = c[2];
+      }
+    }
+    return t;
+  }
+
+  function spot(u, lat, s) {
+    let du = u - s.u; du -= Math.round(du);
+    return Math.exp(-((du / s.w) ** 2 + ((lat - s.lat) / s.h) ** 2));
+  }
+
+  function bands(lat, palette, freq, seed) {
+    const pv = n1(lat * freq + seed) * 0.6 + n1(lat * freq * 2.7 + seed * 2) * 0.3 + n1(lat * freq * 6) * 0.1;
+    const t = pv * (palette.length - 1);
+    const i = Math.min(palette.length - 2, Math.floor(t));
+    return mix(palette[i], palette[i + 1], t - i);
+  }
+
+  function craterField(seed, count) {
+    const r = rng(seed);
+    return Array.from({ length: count }, () => ({ u: r(), lat: (r() - 0.5) * 2.6, s: 0.01 + Math.pow(r(), 3) * 0.06 }));
+  }
+
+  const TEXTURES = {
+    mercury: (() => {
+      const craters = craterField(31, 70);
+      return (u, v, lat) => {
+        let g = 70 + 110 * fbm(u, v, 5, 1);
+        for (const c of craters) {
+          let du = (u - c.u); du -= Math.round(du);
+          du *= Math.cos(lat) * 2;
+          const d = Math.hypot(du, (lat - c.lat) / Math.PI) / c.s;
+          if (d < 1.25) g += d < 0.85 ? -22 * (1 - d * 0.5) : 30 * (1 - Math.abs(d - 1) / 0.25);
+        }
+        return [g * 1.02, g * 0.98, g * 0.94];
+      };
+    })(),
+
+    venus: (u, v, lat) => {
+      const w = fbm(u, v, 3, 2);
+      const n = fbm(u + w * 0.35, v + w * 0.15, 5, 3);
+      const streak = n1(lat * 14 + w * 6) * 0.3;
+      return mix([190, 150, 92], [246, 226, 178], Math.min(1, n * 1.1 + streak));
+    },
+
+    earth: (u, v, lat) => {
+      const h = fbm(u, v, 6, 4) + 0.08 * (n1(lat * 3 + 5) - 0.5);
+      let c;
+      if (h < 0.48) c = mix([8, 30, 78], [22, 78, 150], smooth(0.28, 0.48, h));
+      else {
+        const dry = smooth(0.45, 0.75, fbm(u * 2, v * 2, 3, 5)) * (1 - smooth(0.6, 1.0, Math.abs(lat)));
+        c = mix([52, 98, 44], [176, 146, 96], dry);
+        c = mix(c, [120, 110, 92], smooth(0.62, 0.75, h));
+      }
+      const ice = smooth(1.15, 1.3, Math.abs(lat) + (h - 0.5) * 0.3);
+      c = mix(c, [236, 242, 248], ice);
+      const cl = smooth(0.52, 0.72, fbm(u * 1.5 + 0.2, v * 1.2, 5, 6));
+      return mix(c, [250, 250, 252], cl * 0.85);
+    },
+
+    mars: (u, v, lat) => {
+      let n = fbm(u, v, 6, 7);
+      n -= 0.12 * Math.exp(-(((lat + 0.35) / 0.35) ** 2)) * fbm(u * 2, v * 2, 3, 8);
+      const ramp = [[42, 18, 12], [92, 36, 20], [150, 62, 30], [190, 96, 50], [214, 132, 80], [232, 170, 120]];
+      const t = Math.min(1, Math.max(0, (n - 0.2) * 1.6)) * (ramp.length - 1);
+      const i = Math.min(ramp.length - 2, Math.floor(t));
+      let c = mix(ramp[i], ramp[i + 1], t - i);
+      const cap = smooth(1.3, 1.38, Math.abs(lat) + 0.05 * (fbm(u * 3, v * 3, 2, 9) - 0.5));
+      return mix(c, [232, 222, 215], cap * 0.85);
+    },
+
+    jupiter: (u, v, lat) => {
+      const warp = (fbm(u, v, 5, 10) - 0.5) * 0.12;
+      let c = bands(lat + warp, [[150, 100, 70], [205, 172, 138], [236, 222, 196], [176, 124, 88], [244, 236, 218]], 9, 3);
+      c = c.map(q => q * (0.9 + 0.2 * fbm(u * 5, v * 0.7, 4, 11)));
+      const grs = { u: 0.3, lat: -0.38, w: 0.065, h: 0.05 };
+      const k = spot(u, lat, grs);
+      c = mix(c, [246, 228, 210], smooth(0.25, 0.45, k) * (1 - smooth(0.55, 0.75, k)) * 0.6);
+      c = mix(c, [190, 82, 52], smooth(0.55, 0.9, k));
+      return c;
+    },
+
+    saturn: (u, v, lat) => {
+      const warp = (fbm(u, v, 5, 12) - 0.5) * 0.09;
+      let c = bands(lat + warp, [[226, 206, 160], [214, 182, 126], [196, 156, 98], [238, 226, 194]], 26, 40);
+      c = c.map(q => q * (0.9 + 0.2 * fbm(u * 4, v * 0.6 + 0.3, 4, 13)));
+      for (const s of [
+        { u: 0.18, lat: -0.38, w: 0.035, h: 0.035, c: [246, 238, 220], a: 0.9 },
+        { u: 0.52, lat: 0.62, w: 0.06, h: 0.03, c: [250, 244, 230], a: 0.85 },
+        { u: 0.77, lat: -0.15, w: 0.025, h: 0.02, c: [150, 110, 70], a: 0.7 }
+      ]) c = mix(c, s.c, spot(u, lat, s) * s.a);
+      return mix(c, [140, 158, 172], smooth(0.95, 1.25, lat) * 0.55);
+    },
+
+    uranus: (u, v, lat) => {
+      const b = n1(lat * 10 + 3) * 0.5 + n1(lat * 30) * 0.2;
+      let c = mix([150, 206, 216], [196, 234, 238], b);
+      return mix(c, [210, 240, 242], smooth(0.9, 1.4, lat) * 0.5);
+    },
+
+    neptune: (u, v, lat) => {
+      const warp = (fbm(u, v, 4, 14) - 0.5) * 0.08;
+      let c = bands(lat + warp, [[30, 60, 160], [52, 98, 210], [72, 128, 230], [40, 80, 190]], 8, 7);
+      c = mix(c, [18, 34, 100], smooth(0.4, 0.8, spot(u, lat, { u: 0.6, lat: -0.35, w: 0.06, h: 0.035 })));
+      const cl = smooth(0.62, 0.78, fbm(u * 3, v * 0.5, 4, 15)) * Math.exp(-(((Math.abs(lat) - 0.45) / 0.2) ** 2));
+      return mix(c, [230, 240, 255], cl * 0.8);
+    }
+  };
+
+  /* ---------- Rings ---------- */
+  const SATURN_RINGS = [
     [1.24, 1.53, 0.16, 150, 136, 118],
     [1.53, 1.95, 0.92, 232, 214, 176],
     [1.95, 2.03, 0.05, 120, 110, 95],
     [2.03, 2.27, 0.62, 210, 192, 158]
   ];
-  function ringAt(r) {
-    for (const g of RINGS) {
+  const URANUS_RINGS = [
+    [1.64, 1.655, 0.14, 120, 130, 138],
+    [1.72, 1.735, 0.12, 120, 130, 138],
+    [1.82, 1.84, 0.16, 125, 135, 142],
+    [1.95, 1.99, 0.3, 140, 150, 158]
+  ];
+  function ringAt(spec, r, fine) {
+    for (const g of spec) {
       if (r >= g[0] && r < g[1]) {
         let op = g[2];
-        if (Math.abs(r - 2.214) < 0.006) op *= 0.1;
-        op *= 0.72 + 0.28 * (0.5 + 0.5 * Math.sin(r * 140) * Math.sin(r * 43 + 1.3));
-        op *= 0.85 + 0.3 * (n1(r * 140) - 0.5);
-        op *= smooth(g[0], g[0] + 0.012, r) * (1 - smooth(g[1] - 0.012, g[1], r));
+        if (fine) {
+          if (Math.abs(r - 2.214) < 0.006) op *= 0.1;
+          op *= 0.72 + 0.28 * (0.5 + 0.5 * Math.sin(r * 140) * Math.sin(r * 43 + 1.3));
+          op *= 0.85 + 0.3 * (n1(r * 140) - 0.5);
+        }
+        const e = Math.min(0.012, (g[1] - g[0]) / 3);
+        op *= smooth(g[0], g[0] + e, r) * (1 - smooth(g[1] - e, g[1], r));
         return [op, g[3], g[4], g[5]];
       }
     }
     return null;
   }
 
-  /* ---------- Cloud texture with storms, so the spin is visible ---------- */
-  const TW = 1024, TH = 512;
-  const tex = new Uint8ClampedArray(TW * TH * 3);
-  const palette = [[226, 206, 160], [214, 182, 126], [196, 156, 98], [238, 226, 194]];
-  const storms = [
-    { u: 0.18, lat: -0.38, w: 0.035, h: 0.035, c: [246, 238, 220], a: 0.9 },
-    { u: 0.52, lat: 0.62, w: 0.06, h: 0.03, c: [250, 244, 230], a: 0.85 },
-    { u: 0.77, lat: -0.15, w: 0.025, h: 0.02, c: [150, 110, 70], a: 0.7 },
-    { u: 0.36, lat: 0.25, w: 0.045, h: 0.018, c: [244, 232, 205], a: 0.7 },
-    { u: 0.9, lat: 0.45, w: 0.03, h: 0.02, c: [170, 128, 82], a: 0.6 }
+  /* ---------- The planets, in order from the Sun ---------- */
+  // k: size on screen, tilt: axis lean toward the viewer, roll: sideways lean,
+  // obl: flattening, spin: turns per ms, atm: rim glow colour
+  const PLANETS = [
+    { id: 'mercury', k: 0.8,  tilt: 0.05, roll: -0.02, obl: 1,     spin: 1 / 26000, atm: null },
+    { id: 'venus',   k: 0.9,  tilt: 0.05, roll: 0.05,  obl: 1,     spin: 1 / 34000, atm: [255, 214, 150] },
+    { id: 'earth',   k: 0.92, tilt: 0.25, roll: -0.4,  obl: 1,     spin: 1 / 22000, atm: [110, 170, 255] },
+    { id: 'mars',    k: 0.86, tilt: 0.25, roll: -0.44, obl: 1,     spin: 1 / 22000, atm: [255, 160, 110] },
+    { id: 'jupiter', k: 1.08, tilt: 0.05, roll: -0.05, obl: 0.935, spin: 1 / 16000, atm: [240, 210, 170] },
+    { id: 'saturn',  k: 0.62, tilt: 0.33, roll: -0.32, obl: 0.91,  spin: 1 / 18000, atm: [240, 214, 160], rings: SATURN_RINGS, fine: true },
+    { id: 'uranus',  k: 0.8,  tilt: 1.2,  roll: 0.45,  obl: 0.98,  spin: 1 / 20000, atm: [170, 230, 240], rings: URANUS_RINGS },
+    { id: 'neptune', k: 0.9,  tilt: 0.2,  roll: -0.5,  obl: 0.98,  spin: 1 / 20000, atm: [100, 150, 255] }
   ];
-  for (let y = 0; y < TH; y++) {
-    const v = y / TH;
-    const lat = (0.5 - v) * Math.PI;
-    for (let x = 0; x < TW; x++) {
-      const u = x / TW;
-      // Wavy band edges and streaky turbulence along each band
-      const warp = (fbm(u, v, 5) - 0.5) * 0.09;
-      const lw = lat + warp;
-      const pv = n1(lw * 26 + 40) * 0.6 + n1(lw * 70 + 9) * 0.3 + n1(lw * 160) * 0.1;
-      const t = pv * (palette.length - 1);
-      const i = Math.min(palette.length - 2, Math.floor(t)), f = t - i;
-      let c = palette[i].map((q, k) => q + (palette[i + 1][k] - q) * f);
-      const streak = 0.9 + 0.2 * fbm(u * 4, v * 0.6 + 0.3, 4);
-      c = c.map(q => q * streak);
-      // Storms
-      for (const s of storms) {
-        let du = u - s.u; du -= Math.round(du);
-        const k = Math.exp(-((du / s.w) ** 2 + ((lat - s.lat) / s.h) ** 2));
-        if (k > 0.01) c = c.map((q, j) => q + (s.c[j] - q) * k * s.a);
+
+  const L = (() => { const v = [0.95, 0.32, 0.12]; const l = Math.hypot(...v); return v.map(c => c / l); })();
+
+  /* ---------- Shared sphere geometry ---------- */
+  let W, H, R, q, PW, stars = [];
+  let geo = null;   // per-pixel normal, coverage and lighting, shared by all planets
+
+  function buildGeometry() {
+    PW = Math.min(Math.round(2 * R * 1.08 * q), 620);
+    const nx = [], ny = [], nz = [], idx = [], alpha = [], shade = [];
+    const aa = 2.2 / PW;
+    for (let py = 0; py < PW; py++) {
+      for (let px = 0; px < PW; px++) {
+        const x = (px + 0.5) / PW * 2 - 1;
+        const y = 1 - (py + 0.5) / PW * 2;
+        const dd = x * x + y * y;
+        const dist = Math.sqrt(dd);
+        if (dist > 1 + aa) continue;
+        const z = Math.sqrt(Math.max(0, 1 - Math.min(1, dd)));
+        const dot = x * L[0] + y * L[1] + z * L[2];
+        const light = smooth(-0.12, 0.45, dot) * (0.55 + 0.45 * Math.max(0, dot));
+        const limb = 0.75 + 0.25 * Math.sqrt(z);
+        nx.push(x); ny.push(y); nz.push(z);
+        idx.push((py * PW + px) * 4);
+        alpha.push(Math.min(1, Math.max(0, (1 - dist) / aa + 0.5)) * 255);
+        shade.push(light * limb + 0.025 * Math.max(0, -dot + 0.2));
       }
-      // Polar hexagon and bluish cap in the north
-      const pole = smooth(0.95, 1.25, lat);
-      c = [c[0] + (140 - c[0]) * pole * 0.55, c[1] + (158 - c[1]) * pole * 0.55, c[2] + (172 - c[2]) * pole * 0.55];
-      const j = (y * TW + x) * 3;
-      tex[j] = c[0]; tex[j + 1] = c[1]; tex[j + 2] = c[2];
     }
+    geo = {
+      nx: Float32Array.from(nx), ny: Float32Array.from(ny), nz: Float32Array.from(nz),
+      idx: Int32Array.from(idx), alpha: Uint8ClampedArray.from(alpha), shade: Float32Array.from(shade)
+    };
   }
 
-  /* ---------- Layers ---------- */
-  let W, H, R, stars = [];
-  let back, front;                  // static ring layers (full resolution)
-  let pc, pctx, pimg, pIdx, pTy, pLon, pShade, pAlpha, PW, PH;
+  // Per-planet lookup tables: latitude row and longitude for every pixel
+  function preparePlanet(p) {
+    if (!p.tex) p.tex = makeTex(TEXTURES[p.id]);
+    const n = geo.idx.length;
+    const ty = new Int32Array(n), lon = new Float32Array(n);
+    const ct = Math.cos(p.tilt), st = Math.sin(p.tilt);
+    let shadeMul = null;
+    if (p.rings) shadeMul = new Float32Array(n);
+    const LN = L[1] * ct + L[2] * st;
+    for (let i = 0; i < n; i++) {
+      const x = geo.nx[i], y = geo.ny[i], z = geo.nz[i];
+      const sl = y * ct + z * st;                  // dot with the spin axis
+      const e2 = y * st - z * ct;
+      const lat = Math.asin(Math.max(-1, Math.min(1, sl)));
+      ty[i] = Math.min(TH - 1, Math.max(0, Math.floor((0.5 - lat / Math.PI) * TH))) * TW;
+      lon[i] = Math.atan2(x, e2) / (Math.PI * 2);
+      if (shadeMul) {
+        // Ring shadow falling on the planet
+        let m = 1;
+        const t = -sl / LN;
+        if (t > 0) {
+          const Q = [x + t * L[0], y + t * L[1], z + t * L[2]];
+          const rg = ringAt(p.rings, Math.hypot(Q[0], Q[1], Q[2]), p.fine);
+          if (rg) m = 1 - rg[0] * 0.85;
+        }
+        shadeMul[i] = m;
+      }
+    }
+    p.ty = ty; p.lon = lon; p.shadeMul = shadeMul;
+    if (p.rings) buildRings(p);
+    p.ready = true;
+  }
 
-  function renderRings() {
-    const q = Math.min(window.devicePixelRatio || 1, 1.5);
-    const SW = Math.round(W * q), SH = Math.round(H * q);
-    back = document.createElement('canvas');
-    front = document.createElement('canvas');
-    back.width = front.width = SW;
-    back.height = front.height = SH;
-    const bi = back.getContext('2d').createImageData(SW, SH);
-    const fi = front.getContext('2d').createImageData(SW, SH);
-    const Rp = R * q;
-    const cr = Math.cos(-ROLL), sr = Math.sin(-ROLL);
-
-    for (let py = 0; py < SH; py++) {
-      for (let px = 0; px < SW; px++) {
-        const sx = (px + 0.5 - SW / 2) / Rp;
-        const sy = -(py + 0.5 - SH / 2) / Rp;
+  function buildRings(p) {
+    const Rp = R * p.k * q;
+    const half = Math.ceil(2.32 * Rp);
+    const size = half * 2;
+    const back = document.createElement('canvas');
+    const front = document.createElement('canvas');
+    back.width = front.width = back.height = front.height = size;
+    const bi = back.getContext('2d').createImageData(size, size);
+    const fi = front.getContext('2d').createImageData(size, size);
+    const cr = Math.cos(-p.roll), sr = Math.sin(-p.roll);
+    const N = [0, Math.cos(p.tilt), Math.sin(p.tilt)];
+    for (let py = 0; py < size; py++) {
+      for (let px = 0; px < size; px++) {
+        const sx = (px + 0.5 - half) / Rp;
+        const sy = -(py + 0.5 - half) / Rp;
         const x = sx * cr - sy * sr;
         const y = sx * sr + sy * cr;
         const zr = -(y * N[1]) / N[2];
         const rr = Math.hypot(x, y, zr);
         if (rr < 1.2 || rr > 2.3) continue;
-        const rg = ringAt(rr);
+        const rg = ringAt(p.rings, rr, p.fine);
         if (!rg || rg[0] < 0.003) continue;
-
-        const ys = y / OBL;
+        const ys = y / p.obl;
         const dd = x * x + ys * ys;
         const zs = dd < 1 ? Math.sqrt(1 - dd) : -Infinity;
-        // Front layer: rings crossing in front of the disk (plus a thin margin past the limb
-        // so the planet's soft edge never shows a seam). Everything else goes behind.
         const coversDisk = dd < 1 && zr > zs;
         const nearLimb = zr > 0 && dd >= 1 && dd < 1.03;
-
         const b = x * L[0] + y * L[1] + zr * L[2];
         const disc = b * b - (rr * rr - 1);
         const lit = disc > 0 && -b - Math.sqrt(disc) > 0 ? 0.04 : 0.95;
-
-        const i = (py * SW + px) * 4;
-        const put = (dst, a) => {
-          dst[i] = rg[1] * lit; dst[i + 1] = rg[2] * lit; dst[i + 2] = rg[3] * lit; dst[i + 3] = a * 255;
-        };
+        const i = (py * size + px) * 4;
+        const put = (d, a) => { d[i] = rg[1] * lit; d[i + 1] = rg[2] * lit; d[i + 2] = rg[3] * lit; d[i + 3] = a * 255; };
         if (coversDisk) put(fi.data, rg[0]);
-        else {
-          put(bi.data, rg[0]);
-          if (nearLimb) put(fi.data, rg[0] * 0.5);
-        }
+        else { put(bi.data, rg[0]); if (nearLimb) put(fi.data, rg[0] * 0.5); }
       }
     }
     back.getContext('2d').putImageData(bi, 0, 0);
     front.getContext('2d').putImageData(fi, 0, 0);
+    p.back = back; p.front = front; p.ringSize = size / q;
   }
 
-  // Precompute everything about each planet pixel that doesn't change as it spins
-  function preparePlanet() {
-    const q = Math.min(window.devicePixelRatio || 1, 1.5);
-    PW = Math.min(Math.round(2 * R * q), 760);
-    PH = Math.round(PW * OBL);
-    pc = document.createElement('canvas');
-    pc.width = PW; pc.height = PH;
-    pctx = pc.getContext('2d');
-    pimg = pctx.createImageData(PW, PH);
-
-    const idx = [], ty = [], lon = [], shade = [], alpha = [];
-    const aa = 2.2 / PW;
-    for (let py = 0; py < PH; py++) {
-      for (let px = 0; px < PW; px++) {
-        const x = (px + 0.5) / PW * 2 - 1;
-        const y = (1 - (py + 0.5) / PH * 2) * OBL;
-        const ys = y / OBL;
-        const dd = x * x + ys * ys;
-        const dist = Math.sqrt(dd);
-        if (dist > 1 + aa) continue;
-        const cov = Math.min(1, Math.max(0, (1 - dist) / aa + 0.5));
-        const zz = Math.sqrt(Math.max(0, 1 - Math.min(1, dd)));
-        const n = [x, ys, zz];
-        const sl = n[0] * N[0] + n[1] * N[1] + n[2] * N[2];
-        const lat = Math.asin(Math.max(-1, Math.min(1, sl)));
-        const lo = Math.atan2(n[0] * E1[0] + n[1] * E1[1] + n[2] * E1[2], n[0] * E2[0] + n[1] * E2[1] + n[2] * E2[2]);
-
-        const dot = n[0] * L[0] + n[1] * L[1] + n[2] * L[2];
-        let light = smooth(-0.12, 0.45, dot) * (0.55 + 0.45 * Math.max(0, dot));
-        const t = -sl / LN;
-        if (t > 0) {
-          const Q = [n[0] + t * L[0], n[1] + t * L[1], n[2] + t * L[2]];
-          const rg = ringAt(Math.hypot(Q[0], Q[1], Q[2]));
-          if (rg) light *= 1 - rg[0] * 0.85;
-        }
-        const limb = 0.75 + 0.25 * Math.sqrt(zz);
-        const night = 0.025 * Math.max(0, -dot + 0.2);
-
-        idx.push((py * PW + px) * 4);
-        ty.push(Math.min(TH - 1, Math.max(0, Math.floor((0.5 - lat / Math.PI) * TH))) * TW);
-        lon.push(lo / (Math.PI * 2));
-        shade.push(light * limb + night);
-        alpha.push(cov * 255);
-      }
+  // Two pixel buffers so the outgoing and incoming planets can crossfade
+  const bufs = [0, 1].map(() => ({ c: document.createElement('canvas') }));
+  function sizeBuffers() {
+    for (const b of bufs) {
+      b.c.width = b.c.height = PW;
+      b.ctx = b.c.getContext('2d');
+      b.img = b.ctx.createImageData(PW, PW);
     }
-    pIdx = Int32Array.from(idx);
-    pTy = Int32Array.from(ty);
-    pLon = Float32Array.from(lon);
-    pShade = Float32Array.from(shade);
-    pAlpha = Uint8ClampedArray.from(alpha);
   }
 
-  function renderPlanet(rot) {
-    const d = pimg.data;
-    for (let k = 0; k < pIdx.length; k++) {
-      let u = pLon[k] + rot;
+  function paintPlanet(p, buf, rot) {
+    const d = buf.img.data, tex = p.tex, ty = p.ty, lon = p.lon, sm = p.shadeMul;
+    const idx = geo.idx, sh = geo.shade, al = geo.alpha;
+    for (let k = 0; k < idx.length; k++) {
+      let u = lon[k] + rot;
       u -= Math.floor(u);
-      const j = (pTy[k] + ((u * TW) | 0)) * 3;
-      const s = pShade[k];
-      const i = pIdx[k];
-      d[i] = tex[j] * s;
-      d[i + 1] = tex[j + 1] * s;
-      d[i + 2] = tex[j + 2] * s;
-      d[i + 3] = pAlpha[k];
+      const j = (ty[k] + ((u * TW) | 0)) * 3;
+      const s = sm ? sh[k] * sm[k] : sh[k];
+      const i = idx[k];
+      d[i] = tex[j] * s; d[i + 1] = tex[j + 1] * s; d[i + 2] = tex[j + 2] * s; d[i + 3] = al[k];
     }
-    pctx.putImageData(pimg, 0, 0);
+    buf.ctx.putImageData(buf.img, 0, 0);
+  }
+
+  function drawPlanet(p, buf, time, scale, alpha) {
+    if (!p.ready) preparePlanet(p);
+    paintPlanet(p, buf, reduce ? 0.15 : 0.15 + time * p.spin);
+    const r = R * p.k;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(scale, scale);
+    if (p.back) ctx.drawImage(p.back, -p.ringSize / 2, -p.ringSize / 2, p.ringSize, p.ringSize);
+
+    ctx.save();
+    ctx.rotate(-p.roll);
+    ctx.drawImage(buf.c, -r, -r * p.obl, r * 2, r * 2 * p.obl);
+
+    // Thin atmosphere glow on the sunlit limb
+    if (p.atm) {
+      const la = Math.atan2(-L[1], L[0]) + p.roll;
+      const g = ctx.createLinearGradient(Math.cos(la) * r, Math.sin(la) * r, -Math.cos(la) * r, -Math.sin(la) * r);
+      g.addColorStop(0, `rgba(${p.atm.join(',')},0.75)`);
+      g.addColorStop(0.45, `rgba(${p.atm.join(',')},0)`);
+      ctx.strokeStyle = g;
+      ctx.lineWidth = Math.max(1.5, r * 0.012);
+      ctx.shadowColor = `rgba(${p.atm.join(',')},0.8)`;
+      ctx.shadowBlur = r * 0.06;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r + 0.5, r * p.obl + 0.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+    ctx.restore();
+
+    if (p.front) ctx.drawImage(p.front, -p.ringSize / 2, -p.ringSize / 2, p.ringSize, p.ringSize);
+    ctx.restore();
   }
 
   function layout() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    q = Math.min(dpr, 1.5);
     W = window.innerWidth;
     H = window.innerHeight;
     canvas.width = W * dpr;
     canvas.height = H * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    R = W < 700 ? W * 0.47 : Math.min(W * 0.3, H * 0.44);
+    R = W < 700 ? W * 0.42 : Math.min(W * 0.3, H * 0.4);
 
     const r = rng(77);
     stars = Array.from({ length: Math.round((W * H) / 2800) }, () => ({
       x: r() * W, y: r() * H, s: r() < 0.05 ? 1.5 : r() * 1 + 0.3, a: r() * 0.55 + 0.1
     }));
-    renderRings();
-    preparePlanet();
+
+    buildGeometry();
+    sizeBuffers();
+    for (const p of PLANETS) { p.ready = false; p.back = p.front = null; }
   }
 
-  let t0 = 0;
+  /* ---------- Carousel ---------- */
+  let current = 0, previous = -1, phase = 0, last = 0, clock = 0;
+
+  // Prepare the remaining planets in the background, one at a time
+  function warmUp(i) {
+    if (i >= PLANETS.length) return;
+    setTimeout(() => { if (!PLANETS[i].ready) preparePlanet(PLANETS[i]); warmUp(i + 1); }, 60);
+  }
+
+  function updateDots() {
+    segs.forEach((s, i) => {
+      s.classList.toggle('done', i < current);
+      s.firstChild.style.width = i === current ? `${Math.min(100, (phase / HOLD) * 100)}%` : (i < current ? '' : '0');
+    });
+  }
+
+  const ease = x => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);
+
   function frame(now) {
-    if (!t0) t0 = now;
-    const time = reduce ? 99999 : now - t0;
+    const dt = last ? Math.min(now - last, 100) : 16;
+    last = now;
+    clock += dt;
+    phase += dt;
+
+    if (phase >= HOLD) {
+      phase -= HOLD;
+      previous = current;
+      current = (current + 1) % PLANETS.length;
+    }
 
     ctx.clearRect(0, 0, W, H);
     for (const s of stars) {
@@ -465,42 +666,32 @@ main {
       ctx.fillRect(s.x, s.y, s.s, s.s);
     }
 
-    // The planet spins (one turn every ~70 s); the camera drifts in and floats
-    renderPlanet(reduce ? 0.2 : 0.2 + time / 70000);
+    const intro = Math.min(1, clock / 1600);
+    const t = previous >= 0 ? ease(phase / TRANS) : 1;
 
-    const k = Math.min(1, time / 5000);
-    const e = 1 - Math.pow(1 - k, 3);
-    const scale = 1.18 - 0.18 * e + (reduce ? 0 : Math.sin(time * 0.00015) * 0.006);
-    const drift = reduce ? 0 : Math.sin(time * 0.0001) * 0.006;
-    const alpha = reduce ? 1 : Math.min(1, time / 1800);
+    if (previous >= 0 && t < 1) {
+      // Outgoing planet drifts toward the viewer and fades
+      drawPlanet(PLANETS[previous], bufs[1], clock, reduce ? 1 : 1 + 0.1 * t, 1 - t);
+    }
+    const inScale = reduce ? 1 : (previous >= 0 ? 0.9 + 0.1 * t : 1.06 - 0.06 * ease(clock / 3000));
+    drawPlanet(PLANETS[current], bufs[0], clock, inScale, t * intro);
 
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.translate(W / 2, H / 2);
-    ctx.rotate(drift);
-    ctx.scale(scale, scale);
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(back, -W / 2, -H / 2, W, H);
-    ctx.save();
-    ctx.rotate(-ROLL);
-    ctx.drawImage(pc, -R, -R * OBL, R * 2, R * 2 * OBL);
-    ctx.restore();
-    ctx.drawImage(front, -W / 2, -H / 2, W, H);
-    ctx.restore();
-
-    if (!reduce) requestAnimationFrame(frame);
+    updateDots();
+    requestAnimationFrame(frame);
   }
 
   let rt;
   window.addEventListener('resize', () => {
     clearTimeout(rt);
-    rt = setTimeout(() => { layout(); if (reduce) requestAnimationFrame(frame); }, 200);
+    rt = setTimeout(() => { layout(); warmUp(0); }, 200);
   });
 
   layout();
+  preparePlanet(PLANETS[0]);
+  warmUp(1);
   requestAnimationFrame(frame);
 })();
 </script>
+
 </body>
 </html>
