@@ -212,27 +212,35 @@ main {
     };
   }
 
-  /* ---------- Business-jet silhouette (1000 × 220, ground at y = 215) ---------- */
-  const JET = new Path2D(
-    // fuselage
-    'M8,150 C14,132 50,116 110,110 L160,104 C185,95 215,92 250,92 L760,94 C820,96 860,100 905,112 L975,126 C980,128 980,134 975,136 C900,150 840,158 760,160 L200,164 C120,166 40,164 8,150 Z ' +
-    // fin and T-tail
-    'M790,100 L885,20 L942,17 L930,62 L918,114 Z ' +
-    'M860,24 L978,12 L984,20 L880,32 Z ' +
-    // rear-mounted engine and pylon
-    'M676,92 C673,83 684,78 704,78 L790,80 C806,81 815,86 815,92 C815,98 806,103 790,104 L704,105 C684,105 674,100 676,92 Z ' +
-    // wing and winglet
-    'M360,150 L560,148 L700,176 L690,180 L520,168 L380,166 Z ' +
-    'M686,177 L712,150 L720,152 L700,181 Z ' +
-    // landing gear
-    'M150,160 L158,160 L158,198 L150,198 Z ' +
-    'M500,160 L512,160 L512,194 L500,194 Z'
+  /* ---------- T-6 Texan silhouette, drawn level (1000 × 300) ----------
+     Taildragger: the whole aircraft is tilted so both wheels touch the ground. */
+  const PLANE = new Path2D(
+    // spinner and round radial-engine cowling
+    'M18,150 C22,136 40,128 58,126 L58,174 C40,172 22,164 18,150 Z ' +
+    'M58,112 C70,98 120,94 190,98 L190,204 C120,208 70,204 58,190 Z ' +
+    // fuselage, tapering to the tail
+    'M186,98 L300,92 L565,94 C700,104 830,126 935,140 L940,162 C830,168 700,176 560,192 L430,202 L186,206 Z ' +
+    // long tandem greenhouse canopy
+    'M300,94 C320,66 360,56 420,54 L520,54 C545,56 560,72 566,95 Z ' +
+    // fin and rudder
+    'M815,134 L882,60 C896,46 922,44 940,50 C958,58 962,84 958,110 L955,166 L928,164 Z ' +
+    // horizontal stabiliser, seen edge-on
+    'M790,150 L966,144 L969,156 L790,162 Z ' +
+    // low wing, edge-on with a hint of dihedral
+    'M245,196 L565,188 L580,203 L245,214 Z ' +
+    // main gear leg and tail-wheel leg
+    'M292,206 L308,206 L294,250 L278,250 Z ' +
+    'M902,160 L912,160 L916,196 L906,196 Z'
   );
-  const WHEELS = [[154, 204, 11], [494, 202, 13], [518, 202, 13]];
+  const WHEELS = [[286, 254, 28], [911, 200, 10]];
+  const CANOPY = new Path2D('M306,92 C326,68 362,60 420,58 L518,58 C540,60 553,74 558,92 Z');
+  const CONTACT = [286, 282];                       // bottom of the main wheel
+  const TILT = Math.atan2(282 - 210, 911 - 286);    // nose-up attitude on the ground
+  const PROP = { x: 16, y: 150, r: 132 };
 
   /* ---------- Layout ---------- */
   let W, H, dpr, yh, yT, ox0, ox1, oy0, sunX, sunY, sunR;
-  let jet = { s: 1, x: 0, y: 0 };
+  let jet = { s: 1, gx: 0, gy: 0 };
   let skyLayer, hangarLayer, jetLayer, floorLayer;
   let lights = [], dust = [];
   let t0 = 0;
@@ -255,19 +263,28 @@ main {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     const mobile = W < 700;
-    yh = H * (mobile ? 0.64 : 0.6);     // horizon
-    yT = H * (mobile ? 0.72 : 0.69);                     // hangar door threshold
-    ox0 = W * (mobile ? 0.04 : 0.08);   // door opening
-    ox1 = W * (mobile ? 0.96 : 0.92);
-    oy0 = H * 0.11;
-    sunX = W * (mobile ? 0.78 : 0.83);
-    sunR = Math.min(W, H) * 0.035;
-    sunY = yh + sunR * 0.25;
+    const M = Math.min(W, H);
 
-    const pw = mobile ? W * 0.94 : Math.min(W * 0.6, H * 0.95);
+    // Measure where the name and status actually sit, then fit the scene around them
+    const head = document.querySelector('.title').getBoundingClientRect();
+    const tail = document.querySelector('.status').getBoundingClientRect();
+    const textTop = head.top || H * 0.3;
+    const textBottom = tail.bottom || H * 0.48;
+
+    jet.gy = H * (mobile ? 0.8 : 0.84);                     // where the wheels touch
+    const room = Math.max(H * 0.12, jet.gy - textBottom - H * 0.05);
+    const pw = Math.min(W * (mobile ? 0.9 : 0.78), room / 0.3, 1100);
     jet.s = pw / 1000;
-    jet.x = W / 2 - pw / 2;
-    jet.y = yT + H * 0.025 - 215 * jet.s;
+    jet.gx = W / 2 + (CONTACT[0] - 495) * jet.s;
+
+    yh = jet.gy - 115 * jet.s;                               // horizon behind the fuselage
+    yT = jet.gy - 6 * jet.s;                                 // hangar door threshold
+    ox0 = W * (mobile ? 0.035 : 0.05);
+    ox1 = W - ox0;
+    oy0 = Math.max(H * 0.03, textTop - H * 0.15);
+    sunR = M * 0.035;
+    sunX = Math.min(ox1 - sunR * 2.5, W / 2 + pw * 0.5 + W * 0.04);
+    sunY = yh + sunR * 0.25;
 
     buildSky();
     buildHangar();
@@ -427,7 +444,7 @@ main {
     }
 
     // Roof truss
-    const tb = H * 0.075;
+    const tb = Math.min(H * 0.07, (textTop0() - oy0) * 0.45);
     g.fillStyle = '#030303';
     g.fillRect(ox0, oy0, ox1 - ox0, H * 0.012);
     g.fillRect(ox0, oy0 + tb, ox1 - ox0, H * 0.008);
@@ -446,7 +463,7 @@ main {
     // Pendant lamps hanging from the truss
     const M = Math.min(W, H);
     for (const fx of [0.3, 0.5, 0.7]) {
-      const lx = W * fx, ly = oy0 + tb + H * 0.05;
+      const lx = W * fx, ly = oy0 + tb + H * 0.02;
       g.strokeStyle = '#030303';
       g.lineWidth = 1.5;
       g.beginPath(); g.moveTo(lx, oy0 + tb); g.lineTo(lx, ly); g.stroke();
@@ -468,16 +485,20 @@ main {
     }
   }
 
+  function textTop0() { return document.querySelector('.title').getBoundingClientRect().top || H * 0.3; }
+
+  function planeTransform(g, mirror, dx = 0, dy = 0) {
+    g.translate(jet.gx + dx, jet.gy + dy);
+    if (mirror) g.scale(1, -1);
+    g.rotate(-TILT);
+    g.scale(jet.s, jet.s);
+    g.translate(-CONTACT[0], -CONTACT[1]);
+  }
+
   function drawJetShape(g, mirror) {
     g.save();
-    if (mirror) {
-      g.translate(jet.x, jet.y + 215 * jet.s * 2);
-      g.scale(jet.s, -jet.s);
-    } else {
-      g.translate(jet.x, jet.y);
-      g.scale(jet.s, jet.s);
-    }
-    g.fill(JET);
+    planeTransform(g, mirror);
+    g.fill(PLANE);
     for (const [x, y, r] of WHEELS) { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
     g.restore();
   }
@@ -488,33 +509,57 @@ main {
     g.fillStyle = '#060506';
     drawJetShape(g, false);
 
-    // Warm rim light along the top of the silhouette
     g.save();
-    g.translate(jet.x, jet.y);
-    g.scale(jet.s, jet.s);
-    g.strokeStyle = 'rgba(255,150,80,0.45)';
-    g.lineWidth = 1.2 / jet.s;
+    planeTransform(g, false);
+
+    // Warm rim light along the top edges
+    g.strokeStyle = 'rgba(255,150,80,0.5)';
+    g.lineWidth = 1.3 / jet.s;
     g.save();
     g.beginPath();
-    g.rect(0, 0, 1000, 112);
+    g.rect(0, 0, 1000, 120);
     g.clip();
-    g.stroke(JET);
+    g.stroke(PLANE);
     g.restore();
 
-    // Cabin windows glowing from inside
-    g.shadowColor = 'rgba(255,180,100,0.9)';
-    g.shadowBlur = 8 / jet.s;
-    g.fillStyle = 'rgba(255,196,130,0.9)';
-    for (let i = 0; i < 9; i++) {
-      g.beginPath();
-      g.ellipse(275 + i * 40, 118, 6.5, 8.5, 0, 0, Math.PI * 2);
-      g.fill();
-    }
-    g.fillStyle = 'rgba(255,170,110,0.35)';
+    // Canopy glass catching the sunset, with its frame bars
+    const glass = g.createLinearGradient(300, 58, 560, 92);
+    glass.addColorStop(0, 'rgba(255,150,90,0.18)');
+    glass.addColorStop(0.7, 'rgba(255,190,120,0.45)');
+    glass.addColorStop(1, 'rgba(255,220,170,0.7)');
+    g.fillStyle = glass;
+    g.fill(CANOPY);
+    g.strokeStyle = '#060506';
+    g.lineWidth = 5;
     g.beginPath();
-    g.moveTo(165, 108); g.lineTo(200, 98); g.lineTo(228, 98); g.lineTo(222, 112); g.closePath();
-    g.fill();
+    for (const x of [350, 395, 440, 480, 520]) { g.moveTo(x, 58); g.lineTo(x + 6, 94); }
+    g.moveTo(310, 80); g.lineTo(556, 80);
+    g.stroke();
+
+    // Exhaust stack glow at the cowling
+    g.fillStyle = 'rgba(255,120,60,0.55)';
+    g.beginPath(); g.ellipse(196, 190, 9, 4, 0.2, 0, Math.PI * 2); g.fill();
     g.restore();
+  }
+
+  // Spinning propeller: a faint disc with a flickering blade
+  function drawProp(time, dx, dy) {
+    ctx.save();
+    planeTransform(ctx, false, dx, dy);
+    const { x, y, r } = PROP;
+    ctx.fillStyle = 'rgba(255,180,120,0.07)';
+    ctx.beginPath(); ctx.ellipse(x, y, 7, r, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,190,130,0.35)';
+    ctx.lineWidth = 1.2 / jet.s;
+    ctx.beginPath(); ctx.ellipse(x, y, 7, r, 0, -Math.PI * 0.6, -Math.PI * 0.4); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(x, y, 7, r, 0, Math.PI * 0.4, Math.PI * 0.6); ctx.stroke();
+    const a = reduce ? 0.6 : time * 0.045;
+    const len = r * Math.abs(Math.cos(a));
+    ctx.strokeStyle = 'rgba(6,5,6,0.75)';
+    ctx.lineWidth = 9;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x, y - len); ctx.lineTo(x, y + len); ctx.stroke();
+    ctx.restore();
   }
 
   /* Polished hangar floor reflecting the door, the sunset and the jet */
@@ -679,6 +724,7 @@ main {
     ctx.drawImage(floorLayer, 0, 0, W, H);
     ctx.drawImage(hangarLayer, 0, 0, W, H);
     ctx.drawImage(jetLayer, px * 2, py * 1.5, W, H);
+    drawProp(time, px * 2, py * 1.5);
     drawRays(time);
     drawDust(time);
     ctx.restore();
@@ -700,6 +746,8 @@ main {
 
   layout();
   requestAnimationFrame(frame);
+  // Re-fit once the web font has loaded, since it changes the text block's size
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => layout());
 })();
 </script>
 
