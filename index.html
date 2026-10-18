@@ -2,423 +2,433 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
 <title>IDALIC.IO — Em breve</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Exo+2:wght@400;500&display=swap" rel="stylesheet" />
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700&display=swap');
+:root {
+  color-scheme: dark;
+  --void: #000000;
+  --deep: #000000;
+  --signal: #5ee7ff;
+  --packet: #8b7bff;
+  --ice: #e8f1ff;
+  --dim: #7d8bb0;
+  --alert: #ff4d6d;
+  --word-bottom: 60vh;
+}
 
 * { box-sizing: border-box; }
 
 html, body {
   margin: 0;
-  width: 100%;
-  min-height: 100%;
-  background: #050505;
-  color: #fff;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
-
-body {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  height: 100%;
+  background: var(--void);
+  color: var(--ice);
+  font-family: "Exo 2", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   overflow: hidden;
-  position: relative;
 }
 
-body::before {
-  content: "";
-  position: absolute;
-  inset: 0;
+/* Deep-space backdrop */
+body {
   background:
-    radial-gradient(circle at 50% 18%, rgba(255,255,255,0.08), transparent 30%),
-    radial-gradient(circle at 50% 100%, rgba(255,255,255,0.06), transparent 32%),
-    linear-gradient(to bottom, rgba(255,255,255,0.02), transparent 30%);
-  pointer-events: none;
+    radial-gradient(ellipse 70% 50% at 50% 42%, rgba(94,231,255,0.04), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(139,123,255,0.07), transparent 70%),
+    linear-gradient(to bottom, var(--void) 0%, var(--deep) 100%);
 }
 
-body::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  opacity: 0.06;
+/* Perspective grid floor */
+.floor {
+  position: fixed;
+  left: -50%;
+  right: -50%;
+  bottom: 0;
+  height: 46vh;
+  transform-origin: bottom center;
+  transform: perspective(380px) rotateX(62deg);
   background-image:
-    linear-gradient(to right, rgba(255,255,255,0.12) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px);
-  background-size: 80px 80px;
-  mask-image: linear-gradient(to bottom, transparent, rgba(0,0,0,1) 18%, rgba(0,0,0,1) 82%, transparent);
+    linear-gradient(to right, rgba(94,231,255,0.22) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(139,123,255,0.22) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: linear-gradient(to top, #000 0%, rgba(0,0,0,0.6) 40%, transparent 100%);
+          mask-image: linear-gradient(to top, #000 0%, rgba(0,0,0,0.6) 40%, transparent 100%);
+  animation: floorRun 3.2s linear infinite;
   pointer-events: none;
 }
 
-.wrap {
-  position: relative;
-  z-index: 2;
+.horizon {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 13vh;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(94,231,255,0.55), rgba(139,123,255,0.55), transparent);
+  box-shadow: 0 0 24px 4px rgba(94,231,255,0.18);
+  pointer-events: none;
+}
+
+@keyframes floorRun {
+  from { background-position: 0 0; }
+  to   { background-position: 0 64px; }
+}
+
+/* Faint scanlines */
+.scanlines {
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(to bottom, rgba(255,255,255,0.025) 0 1px, transparent 1px 3px);
+  pointer-events: none;
+  z-index: 3;
+}
+
+canvas {
+  position: fixed;
+  inset: 0;
   width: 100%;
-  max-width: 1280px;
-  padding: 32px 24px;
-  text-align: center;
+  height: 100%;
+  z-index: 2;
+  display: block;
+  touch-action: none;
 }
 
-.stack {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+main {
+  position: relative;
+  z-index: 4;
+  height: 100%;
+  pointer-events: none;
 }
 
-.badge {
+/* Wordmark stays in the DOM for search engines and screen readers;
+   with JS on, the particle network draws it. */
+.title {
+  margin: 0;
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  font-family: "Orbitron", "Segoe UI", sans-serif;
+  font-weight: 700;
+  font-size: clamp(2.4rem, 10vw, 7.5rem);
+  letter-spacing: 0.18em;
+  padding-left: 0.18em;
+  white-space: nowrap;
+  color: var(--ice);
+  text-shadow: 0 0 24px rgba(94,231,255,0.5);
+}
+
+.js .title {
+  clip-path: inset(50%);
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.status {
+  position: absolute;
+  left: 50%;
+  top: var(--word-bottom);
+  transform: translate(-50%, 12px);
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 22px;
-  padding: 12px 24px;
-  border: 1px solid rgba(255,255,255,0.12);
+  padding: 10px 22px 10px 18px;
   border-radius: 999px;
-  background: rgba(255,255,255,0.04);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  font-size: 14px;
-  letter-spacing: 0.34em;
-  text-transform: uppercase;
-  color: #d4d4d8;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02), 0 0 30px rgba(255,255,255,0.03);
-  animation: badgeFloat 4s ease-in-out infinite;
+  border: 1px solid rgba(94,231,255,0.25);
+  background: linear-gradient(135deg, rgba(94,231,255,0.08), rgba(139,123,255,0.08));
+  -webkit-backdrop-filter: blur(12px);
+          backdrop-filter: blur(12px);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.02) inset, 0 0 32px rgba(94,231,255,0.12);
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--ice);
+  opacity: 0;
+  transition: opacity 0.9s ease, transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.status.on {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.no-js-visible .status,
+html:not(.js) .status {
+  opacity: 1;
+  top: calc(46% + 5rem);
+  transform: translate(-50%, 0);
 }
 
 .dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: #ef4444;
-  box-shadow:
-    0 0 10px rgba(239,68,68,0.95),
-    0 0 20px rgba(239,68,68,0.55);
-  animation: dotPulse 1.6s ease-in-out infinite;
-}
-
-.title-box {
   position: relative;
-  display: inline-block;
-  padding: 84px 0 120px;
-}
-
-.ambient-halo {
-  position: absolute;
-  left: 50%;
-  top: 44%;
-  width: 760px;
-  height: 760px;
-  transform: translate(-50%, -50%);
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,255,255,0.07), rgba(255,255,255,0.02) 42%, transparent 68%);
-  filter: blur(70px);
-  opacity: 0.7;
-  animation: haloPulse 6s ease-in-out infinite;
-  pointer-events: none;
+  background: var(--alert);
+  box-shadow: 0 0 10px var(--alert);
 }
 
-.uplight {
-  position: absolute;
-  left: 50%;
-  bottom: -82px;
-  width: 170%;
-  height: 280px;
-  transform: translateX(-50%);
-  background: radial-gradient(ellipse at bottom, rgba(255,255,255,0.55), rgba(255,255,255,0.18) 38%, transparent 72%);
-  filter: blur(50px);
-  opacity: 0.82;
-  animation: uplightPulse 5.5s ease-in-out infinite;
-  pointer-events: none;
-}
-
-.light-beam {
-  position: absolute;
-  left: 50%;
-  bottom: -260px;
-  width: 320px;
-  height: 520px;
-  transform: translateX(-50%);
-  background: linear-gradient(to top, rgba(255,255,255,0.2), rgba(255,255,255,0.05) 45%, transparent 80%);
-  filter: blur(70px);
-  opacity: 0.58;
-  pointer-events: none;
-}
-
-.line {
-  position: absolute;
-  left: -240px;
-  right: -240px;
-  top: 50%;
-  height: 1px;
-  transform: translateY(-50%);
-  background: linear-gradient(to right, transparent, rgba(255,255,255,0.52), transparent);
-  opacity: 0.95;
-}
-
-.line-glow {
-  position: absolute;
-  left: -160px;
-  right: -160px;
-  top: 50%;
-  height: 3px;
-  transform: translateY(-50%);
-  background: rgba(255,255,255,0.2);
-  filter: blur(14px);
-  opacity: 0.72;
-}
-
-.scan-wave {
-  position: absolute;
-  top: 50%;
-  left: -340px;
-  width: 320px;
-  height: 16px;
-  transform: translateY(-50%);
-  background: linear-gradient(to right, transparent, rgba(255,255,255,0.16), rgba(255,255,255,0.85), rgba(255,255,255,0.16), transparent);
-  filter: blur(8px);
-  opacity: 0.95;
-  animation: laserRun 2.5s linear infinite;
-  pointer-events: none;
-}
-
-.laser {
-  position: absolute;
-  top: 50%;
-  left: -280px;
-  width: 260px;
-  height: 4px;
-  transform: translateY(-50%);
-  background: linear-gradient(to right, transparent, rgba(255,255,255,1), transparent);
-  filter: blur(1.2px);
-  box-shadow:
-    0 0 16px rgba(255,255,255,0.95),
-    0 0 36px rgba(255,255,255,0.72),
-    0 0 72px rgba(255,255,255,0.38);
-  animation: laserRun 2.5s linear infinite;
-  pointer-events: none;
-}
-
-.laser-core {
-  position: absolute;
-  inset: 1px 18px;
-  background: rgba(255,255,255,0.98);
-  border-radius: 999px;
-}
-
-.title-glow {
-  position: absolute;
-  inset: 0;
-  filter: blur(24px);
-  opacity: 0.4;
-  animation: titleGlowPulse 4.5s ease-in-out infinite;
-  pointer-events: none;
-}
-
-.title-glow::before {
-  content: "IDALIC.IO";
-  position: absolute;
-  inset: 0;
-  font-family: "Orbitron", sans-serif;
-  font-weight: 700;
-  font-size: clamp(3rem, 10vw, 7.5rem);
-  letter-spacing: 0.28em;
-  color: rgba(255,255,255,0.3);
-}
-
-.title-reflection {
-  position: absolute;
-  left: 50%;
-  top: calc(100% + 8px);
-  transform: translateX(-50%) scaleY(-1);
-  transform-origin: top center;
-  font-family: "Orbitron", sans-serif;
-  font-size: clamp(2.4rem, 8vw, 6.1rem);
-  font-weight: 700;
-  letter-spacing: 0.28em;
-  color: rgba(255,255,255,0.12);
-  white-space: nowrap;
-  filter: blur(1px);
-  opacity: 0.38;
-  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.4), transparent 70%);
-  pointer-events: none;
-}
-
-.title {
-  position: relative;
-  z-index: 4;
-  margin: 0;
-  font-size: clamp(3rem, 10vw, 7.5rem);
-  font-weight: 700;
-  letter-spacing: 0.28em;
-  font-family: "Orbitron", sans-serif;
-  color: #fff;
-  text-shadow:
-    0 0 18px rgba(255,255,255,0.22),
-    0 0 44px rgba(255,255,255,0.14),
-    0 12px 50px rgba(255,255,255,0.06);
-  animation: titleReveal 1.15s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.particles,
-.particles::before,
-.particles::after {
-  position: absolute;
+.dot::after {
   content: "";
-  top: 50%;
-  left: 50%;
-  width: 6px;
-  height: 6px;
+  position: absolute;
+  inset: -5px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.75);
-  box-shadow:
-    -240px -10px 0 rgba(255,255,255,0.16),
-    -180px 16px 0 rgba(255,255,255,0.12),
-    -120px -18px 0 rgba(255,255,255,0.18),
-    -60px 10px 0 rgba(255,255,255,0.12),
-    40px -14px 0 rgba(255,255,255,0.14),
-    120px 12px 0 rgba(255,255,255,0.18),
-    200px -8px 0 rgba(255,255,255,0.12),
-    260px 10px 0 rgba(255,255,255,0.16);
-  transform: translate(-50%, -50%);
-  filter: blur(1px);
-  opacity: 0.45;
-  animation: particlesDrift 7s ease-in-out infinite;
-  pointer-events: none;
+  border: 1px solid var(--alert);
+  animation: ping 1.8s ease-out infinite;
 }
 
-.particles::before {
-  width: 4px;
-  height: 4px;
-  opacity: 0.55;
-  animation-duration: 5.8s;
+@keyframes ping {
+  0%   { transform: scale(0.4); opacity: 0.9; }
+  100% { transform: scale(1.8); opacity: 0; }
 }
 
-.particles::after {
-  width: 3px;
-  height: 3px;
-  opacity: 0.4;
-  animation-duration: 8.2s;
+@media (max-width: 600px) {
+  .status { font-size: 0.95rem; padding: 9px 18px 9px 15px; }
+  .floor { background-size: 44px 44px; height: 40vh; }
+  .horizon { bottom: 11vh; }
+  @keyframes floorRun { to { background-position: 0 44px; } }
 }
 
-@keyframes badgeFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-2px); }
-}
-
-@keyframes dotPulse {
-  0%, 100% { opacity: 0.45; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.35); }
-}
-
-@keyframes titleReveal {
-  from { opacity: 0; transform: scale(0.98); filter: blur(8px); }
-  to { opacity: 1; transform: scale(1); filter: blur(0); }
-}
-
-@keyframes laserRun {
-  0% { left: -340px; }
-  100% { left: calc(100% + 40px); }
-}
-
-@keyframes uplightPulse {
-  0%, 100% { opacity: 0.62; }
-  50% { opacity: 0.95; }
-}
-
-@keyframes haloPulse {
-  0%, 100% { opacity: 0.48; transform: translate(-50%, -50%) scale(1); }
-  50% { opacity: 0.78; transform: translate(-50%, -50%) scale(1.04); }
-}
-
-@keyframes titleGlowPulse {
-  0%, 100% { opacity: 0.22; }
-  50% { opacity: 0.5; }
-}
-
-@keyframes particlesDrift {
-  0%, 100% { transform: translate(-50%, -50%) translateY(0); opacity: 0.25; }
-  50% { transform: translate(-50%, -50%) translateY(-10px); opacity: 0.52; }
-}
-
-@media (max-width: 768px) {
-  .badge {
-    font-size: 12px;
-    letter-spacing: 0.28em;
-    padding: 10px 18px;
-    gap: 10px;
-    margin-bottom: 20px;
-  }
-
-  .title-box {
-    padding: 60px 0 90px;
-  }
-
-  .line {
-    left: -80px;
-    right: -80px;
-  }
-
-  .line-glow {
-    left: -40px;
-    right: -40px;
-  }
-
-  .laser {
-    width: 170px;
-    left: -190px;
-  }
-
-  .scan-wave {
-    width: 190px;
-    left: -220px;
-  }
-
-  .title-reflection {
-    top: calc(100% + 4px);
-    font-size: clamp(2rem, 7vw, 4rem);
-  }
-
-  .uplight {
-    width: 190%;
-    height: 220px;
-  }
-
-  .light-beam {
-    width: 240px;
-    height: 360px;
-  }
+@media (prefers-reduced-motion: reduce) {
+  .floor, .dot::after { animation: none; }
+  .status { transition: none; }
 }
 </style>
 </head>
 <body>
-<main class="wrap">
-  <div class="stack">
-    <div class="badge">
-      <span class="dot"></span>
-      <span>Em breve</span>
-    </div>
+<script>document.documentElement.classList.add('js');</script>
 
-    <div class="title-box">
-      <div class="ambient-halo"></div>
-      <div class="uplight"></div>
-      <div class="light-beam"></div>
-      <div class="particles"></div>
+<div class="floor" aria-hidden="true"></div>
+<div class="horizon" aria-hidden="true"></div>
+<canvas id="net" aria-hidden="true"></canvas>
+<div class="scanlines" aria-hidden="true"></div>
 
-      <div class="line"></div>
-      <div class="line-glow"></div>
-      <div class="scan-wave"></div>
-
-      <div class="laser">
-        <div class="laser-core"></div>
-      </div>
-
-      <div class="title-glow"></div>
-      <h1 class="title">IDALIC.IO</h1>
-      <div class="title-reflection">IDALIC.IO</div>
-    </div>
+<main>
+  <h1 class="title">IDALIC.IO</h1>
+  <div class="status" id="status">
+    <span class="dot" aria-hidden="true"></span>
+    <span>Em breve</span>
   </div>
 </main>
+
+<script>
+(() => {
+  const WORD = 'IDALIC.IO';
+  const canvas = document.getElementById('net');
+  const ctx = canvas.getContext('2d');
+  const status = document.getElementById('status');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const CYAN = [94, 231, 255];
+  const VIOLET = [139, 123, 255];
+
+  let W = 0, H = 0, dpr = 1;
+  let particles = [];
+  let nodes = [];
+  let wordBox = { x: 0, y: 0, w: 0, h: 0 };
+  let start = 0;
+  const pointer = { x: -9999, y: -9999, active: false };
+
+  function mix(a, b, t) {
+    return `rgb(${Math.round(a[0] + (b[0] - a[0]) * t)},${Math.round(a[1] + (b[1] - a[1]) * t)},${Math.round(a[2] + (b[2] - a[2]) * t)})`;
+  }
+
+  // Render the wordmark offscreen and sample its pixels as particle targets
+  function sampleWord() {
+    const off = document.createElement('canvas');
+    const o = off.getContext('2d');
+    off.width = W;
+    off.height = H;
+
+    let size = Math.min(W * 0.13, 150);
+    const font = s => `700 ${s}px Orbitron, "Segoe UI", sans-serif`;
+    const spacingRatio = 0.18;
+
+    const measure = s => {
+      o.font = font(s);
+      let w = 0;
+      for (const ch of WORD) w += o.measureText(ch).width + s * spacingRatio;
+      return w - s * spacingRatio;
+    };
+
+    let total = measure(size);
+    const maxW = W * 0.88;
+    if (total > maxW) { size *= maxW / total; total = measure(size); }
+
+    o.font = font(size);
+    o.textBaseline = 'middle';
+    o.fillStyle = '#fff';
+    const cy = H * 0.46;
+    let x = (W - total) / 2;
+    for (const ch of WORD) {
+      o.fillText(ch, x, cy);
+      x += o.measureText(ch).width + size * spacingRatio;
+    }
+
+    wordBox = { x: (W - total) / 2, y: cy - size * 0.5, w: total, h: size };
+    document.documentElement.style.setProperty('--word-bottom', `${cy + size * 0.62 + 18}px`);
+
+    const data = o.getImageData(0, 0, W, H).data;
+    let gap = Math.max(3, Math.round(size / 34));
+    let pts;
+    do {
+      pts = [];
+      for (let py = Math.floor(wordBox.y - 4); py < wordBox.y + size + 4; py += gap) {
+        for (let px = Math.floor(wordBox.x - 4); px < wordBox.x + total + 4; px += gap) {
+          if (px < 0 || py < 0 || px >= W || py >= H) continue;
+          if (data[(py * W + px) * 4 + 3] > 128) pts.push([px, py]);
+        }
+      }
+      gap++;
+    } while (pts.length > 3600);
+    return { pts, size };
+  }
+
+  function build() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const { pts, size } = sampleWord();
+    const dot = Math.max(1.4, size / 70);
+
+    particles = pts.map(([tx, ty]) => {
+      const t = (tx - wordBox.x) / wordBox.w;
+      const ang = Math.random() * Math.PI * 2;
+      const r = Math.max(W, H) * (0.4 + Math.random() * 0.6);
+      return {
+        x: reduce ? tx : W / 2 + Math.cos(ang) * r,
+        y: reduce ? ty : H * 0.46 + Math.sin(ang) * r,
+        tx, ty,
+        vx: 0, vy: 0,
+        t,
+        s: dot * (0.75 + Math.random() * 0.5),
+        color: mix(CYAN, VIOLET, t),
+        delay: t * 700 + Math.random() * 500
+      };
+    });
+
+    const count = W < 600 ? 28 : 60;
+    nodes = Array.from({ length: count }, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.25,
+      vy: (Math.random() - 0.5) * 0.25
+    }));
+  }
+
+  function drawNodes() {
+    const link = W < 600 ? 110 : 150;
+    for (const n of nodes) {
+      if (!reduce) {
+        n.x += n.vx; n.y += n.vy;
+        if (n.x < 0 || n.x > W) n.vx *= -1;
+        if (n.y < 0 || n.y > H) n.vy *= -1;
+      }
+    }
+    ctx.lineWidth = 1;
+    for (let i = 0; i < nodes.length; i++) {
+      const a = nodes[i];
+      for (let j = i + 1; j < nodes.length; j++) {
+        const b = nodes[j];
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (d < link) {
+          ctx.strokeStyle = `rgba(94,231,255,${(1 - d / link) * 0.18})`;
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        }
+      }
+      if (pointer.active) {
+        const d = Math.hypot(a.x - pointer.x, a.y - pointer.y);
+        if (d < link * 1.4) {
+          ctx.strokeStyle = `rgba(139,123,255,${(1 - d / (link * 1.4)) * 0.45})`;
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(pointer.x, pointer.y); ctx.stroke();
+        }
+      }
+      ctx.fillStyle = 'rgba(232,241,255,0.55)';
+      ctx.fillRect(a.x - 1, a.y - 1, 2, 2);
+    }
+  }
+
+  function frame(now) {
+    if (!start) start = now;
+    const el = now - start;
+    ctx.clearRect(0, 0, W, H);
+    drawNodes();
+
+    // A light sweep crosses the wordmark every few seconds
+    const period = 5200;
+    const phase = ((el - 2200) % period) / period;
+    const sweepX = el > 2200 && !reduce
+      ? wordBox.x - 120 + phase * (wordBox.w + 240) * 1.6
+      : -9999;
+
+    const R = Math.min(110, W * 0.14);
+    for (const p of particles) {
+      if (!reduce && el > p.delay) {
+        let ax = (p.tx - p.x) * 0.045;
+        let ay = (p.ty - p.y) * 0.045;
+        if (pointer.active) {
+          const dx = p.x - pointer.x, dy = p.y - pointer.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < R * R) {
+            const d = Math.sqrt(d2) || 1;
+            const f = (1 - d / R) * 6;
+            ax += (dx / d) * f;
+            ay += (dy / d) * f;
+          }
+        }
+        p.vx = (p.vx + ax) * 0.82;
+        p.vy = (p.vy + ay) * 0.82;
+        p.x += p.vx;
+        p.y += p.vy;
+      }
+
+      const near = Math.abs(p.x - sweepX);
+      if (near < 40) {
+        const k = 1 - near / 40;
+        ctx.fillStyle = `rgba(255,255,255,${0.6 + k * 0.4})`;
+        const s = p.s * (1 + k * 0.8);
+        ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
+      } else {
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s);
+      }
+    }
+
+    if (!reduce) requestAnimationFrame(frame);
+  }
+
+  function setPointer(x, y) { pointer.x = x; pointer.y = y; pointer.active = true; }
+  window.addEventListener('pointermove', e => setPointer(e.clientX, e.clientY));
+  window.addEventListener('pointerdown', e => setPointer(e.clientX, e.clientY));
+  window.addEventListener('pointerleave', () => { pointer.active = false; });
+  window.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') pointer.active = false; });
+  window.addEventListener('blur', () => { pointer.active = false; });
+
+  let rt;
+  window.addEventListener('resize', () => {
+    clearTimeout(rt);
+    rt = setTimeout(() => { build(); if (reduce) frame(performance.now()); }, 150);
+  });
+
+  function go() {
+    build();
+    requestAnimationFrame(frame);
+    setTimeout(() => status.classList.add('on'), reduce ? 0 : 1500);
+  }
+
+  // Wait for Orbitron so the particles trace the right letterforms
+  const fontReady = document.fonts && document.fonts.load
+    ? document.fonts.load('700 100px Orbitron')
+    : Promise.resolve();
+  Promise.race([fontReady, new Promise(r => setTimeout(r, 2500))]).then(go, go);
+})();
+</script>
 </body>
 </html>
