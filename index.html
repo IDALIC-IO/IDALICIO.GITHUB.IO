@@ -490,7 +490,7 @@ main {
   function planeTransform(g, mirror, dx = 0, dy = 0) {
     g.translate(jet.gx + dx, jet.gy + dy);
     if (mirror) g.scale(1, -1);
-    g.rotate(-TILT);
+    g.rotate(TILT);
     g.scale(jet.s, jet.s);
     g.translate(-CONTACT[0], -CONTACT[1]);
   }
@@ -555,8 +555,8 @@ main {
     ctx.beginPath(); ctx.ellipse(x, y, 7, r, 0, Math.PI * 0.4, Math.PI * 0.6); ctx.stroke();
     const a = reduce ? 0.6 : time * 0.045;
     const len = r * Math.abs(Math.cos(a));
-    ctx.strokeStyle = 'rgba(6,5,6,0.75)';
-    ctx.lineWidth = 9;
+    ctx.strokeStyle = 'rgba(6,5,6,0.45)';
+    ctx.lineWidth = 7;
     ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(x, y - len); ctx.lineTo(x, y + len); ctx.stroke();
     ctx.restore();
